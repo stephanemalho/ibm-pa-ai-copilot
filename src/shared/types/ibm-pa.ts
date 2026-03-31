@@ -64,6 +64,37 @@ type CubeSampleMemberSet = {
   serverName: string;
 };
 
+type CubeDataPreviewFilter = {
+  dimensionName: string;
+  hierarchyName?: string | undefined;
+  memberName: string;
+};
+
+type CubeDataPreviewRow = {
+  formattedValue?: string | null | undefined;
+  memberName: string;
+  uniqueName?: string | undefined;
+  value: boolean | null | number | string;
+};
+
+type CubeDataPreviewRequest = {
+  cubeName: string;
+  filters: CubeDataPreviewFilter[];
+  rowDimensionHierarchyName?: string | undefined;
+  rowDimensionName: string;
+  rowLimit?: number | undefined;
+  serverName?: string | undefined;
+};
+
+type CubeDataPreviewResponse = {
+  cubeName: string;
+  filters: CubeDataPreviewFilter[];
+  mode: IbmPaMode;
+  rowDimensionName: string;
+  rows: CubeDataPreviewRow[];
+  serverName: string;
+};
+
 type DimensionAccessibilityDiagnostic = {
   kind: AccessResourceKind;
   classification: ServerAccessibilityClassification;
@@ -98,6 +129,10 @@ export type {
   CubeAccessibilityResponse,
   CubeDimension,
   CubeDimensionsResponse,
+  CubeDataPreviewFilter,
+  CubeDataPreviewRequest,
+  CubeDataPreviewResponse,
+  CubeDataPreviewRow,
   CubeSampleMemberSet,
   CubeSummary,
   CubesResponse,

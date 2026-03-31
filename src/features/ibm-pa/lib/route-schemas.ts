@@ -66,6 +66,19 @@ const cubeSampleMemberSetSchema = z.object({
   serverName: z.string(),
 });
 
+const cubeDataPreviewFilterSchema = z.object({
+  dimensionName: z.string(),
+  hierarchyName: z.string().optional(),
+  memberName: z.string(),
+});
+
+const cubeDataPreviewRowSchema = z.object({
+  formattedValue: z.string().nullable().optional(),
+  memberName: z.string(),
+  uniqueName: z.string().optional(),
+  value: z.union([z.boolean(), z.null(), z.number(), z.string()]),
+});
+
 const cubeDimensionsResponseSchema = z.object({
   cubeName: z.string(),
   dimensions: z.array(cubeDimensionSchema),
@@ -99,6 +112,15 @@ const dimensionAccessibilityResponseSchema = z.object({
   serverName: z.string(),
 });
 
+const cubeDataPreviewResponseSchema = z.object({
+  cubeName: z.string(),
+  filters: z.array(cubeDataPreviewFilterSchema),
+  mode: z.enum(["live", "mock"]),
+  rowDimensionName: z.string(),
+  rows: z.array(cubeDataPreviewRowSchema),
+  serverName: z.string(),
+});
+
 const routeErrorSchema = z.object({
   error: z.object({
     code: z.string(),
@@ -108,6 +130,7 @@ const routeErrorSchema = z.object({
 
 export {
   cubeAccessibilityResponseSchema,
+  cubeDataPreviewResponseSchema,
   cubeDimensionsResponseSchema,
   cubesResponseSchema,
   dimensionAccessibilityResponseSchema,

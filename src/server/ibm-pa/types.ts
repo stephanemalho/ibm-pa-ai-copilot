@@ -169,6 +169,28 @@ type CubeSampleMembersResult = {
   serverName: string;
 };
 
+type CubeDataPreviewFilter = {
+  dimensionName: string;
+  hierarchyName?: string;
+  memberName: string;
+};
+
+type CubeDataPreviewRow = {
+  formattedValue?: string | null;
+  memberName: string;
+  uniqueName?: string;
+  value: MdxCellValue;
+};
+
+type CubeDataPreviewResult = {
+  cubeName: string;
+  filters: CubeDataPreviewFilter[];
+  mode: IbmPaMode;
+  rowDimensionName: string;
+  rows: CubeDataPreviewRow[];
+  serverName: string;
+};
+
 type RunMdxParams = {
   cubeName?: string;
   mdx: string;
@@ -182,6 +204,15 @@ type GetCubeDimensionsParams = {
 
 type GetCubeSampleMembersParams = GetCubeDimensionsParams & {
   sampleSize?: number;
+};
+
+type GetCubeDataPreviewParams = {
+  cubeName: string;
+  filters: CubeDataPreviewFilter[];
+  rowDimensionHierarchyName?: string;
+  rowDimensionName: string;
+  rowLimit?: number;
+  serverName?: string;
 };
 
 type ListCubesParams = {
@@ -210,11 +241,15 @@ export type {
   CubeAccessibilityDiagnosticsResult,
   CubeDimension,
   CubeDimensionsResult,
+  CubeDataPreviewFilter,
+  CubeDataPreviewResult,
+  CubeDataPreviewRow,
   CubeSampleMemberSet,
   CubeSampleMembersResult,
   CubeSummary,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityDiagnosticsResult,
+  GetCubeDataPreviewParams,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
   IbmPaHealthStatus,

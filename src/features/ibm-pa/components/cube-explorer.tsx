@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AccessAwareCard } from "@/features/ibm-pa/components/access-aware-card";
+import { DataPreviewPanel } from "@/features/ibm-pa/components/data-preview-panel";
 import {
   cubeAccessibilityResponseSchema,
   dimensionAccessibilityResponseSchema,
@@ -412,81 +413,99 @@ const CubeExplorer = ({
           </Card>
         </div>
       ) : (
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(24rem,0.95fr)]">
-          <Card className="border-slate-200/80 bg-white/90">
-            <CardHeader>
-              <CardTitle className="text-xl">Cubes</CardTitle>
-              <CardDescription>
-                Filter and browse the cube catalog. Your current selection stays
-                active while you refine the visible list.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 xl:max-h-[42rem] xl:overflow-y-auto">
-              {!selectedCubeVisibleInFilter ? (
-                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                  The selected cube is outside the current filter. Clear or
-                  adjust the search to show it again in the list.
-                </div>
-              ) : null}
-              {renderCubeList({
-                cubes: paginatedCubes,
-                dimensionCache,
-                selectedCubeName,
-                setSelectedCubeName,
-                setSelectedDimensionName,
-              })}
-              <Button
-                onClick={() => {
-                  setCubeRequestNonce((currentValue) => currentValue + 1);
-                }}
-                type="button"
-                variant="secondary"
-              >
-                Refresh cube access
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="space-y-6">
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(24rem,0.95fr)]">
+            <Card className="border-slate-200/80 bg-white/90">
+              <CardHeader>
+                <CardTitle className="text-xl">Cubes</CardTitle>
+                <CardDescription>
+                  Filter and browse the cube catalog. Your current selection
+                  stays active while you refine the visible list.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 xl:max-h-[42rem] xl:overflow-y-auto">
+                {!selectedCubeVisibleInFilter ? (
+                  <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    The selected cube is outside the current filter. Clear or
+                    adjust the search to show it again in the list.
+                  </div>
+                ) : null}
+                {renderCubeList({
+                  cubes: paginatedCubes,
+                  dimensionCache,
+                  selectedCubeName,
+                  setSelectedCubeName,
+                  setSelectedDimensionName,
+                })}
+                <Button
+                  onClick={() => {
+                    setCubeRequestNonce((currentValue) => currentValue + 1);
+                  }}
+                  type="button"
+                  variant="secondary"
+                >
+                  Refresh cube access
+                </Button>
+              </CardContent>
+            </Card>
 
-          <Card className="border-slate-200/80 bg-white/90">
-            <CardHeader>
-              <CardTitle className="text-xl">
-                {selectedCubeName} dimensions
-              </CardTitle>
-              <CardDescription>
-                Dimensions are loaded only for the selected cube and remain
-                access-aware for read-only exploration.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="xl:max-h-[42rem] xl:overflow-y-auto">
-              {renderDimensionList({
-                dimensionState,
-                onRetry: () => {
-                  setDimensionRequestNonce((currentValue) => currentValue + 1);
-                },
-                selectedCubeName,
-                selectedDimension,
-                setSelectedDimensionName,
-              })}
-            </CardContent>
-          </Card>
+            <Card className="border-slate-200/80 bg-white/90">
+              <CardHeader>
+                <CardTitle className="text-xl">
+                  {selectedCubeName} dimensions
+                </CardTitle>
+                <CardDescription>
+                  Dimensions are loaded only for the selected cube and remain
+                  access-aware for read-only exploration.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="xl:max-h-[42rem] xl:overflow-y-auto">
+                {renderDimensionList({
+                  dimensionState,
+                  onRetry: () => {
+                    setDimensionRequestNonce(
+                      (currentValue) => currentValue + 1,
+                    );
+                  },
+                  selectedCubeName,
+                  selectedDimension,
+                  setSelectedDimensionName,
+                })}
+              </CardContent>
+            </Card>
 
-          <Card className="border-slate-200/80 bg-white/90 xl:sticky xl:top-24">
-            <CardHeader>
-              <CardTitle className="text-xl">Details</CardTitle>
-              <CardDescription>
-                Review the selected cube and dimension metadata without leaving
-                the current server context.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderDetailPanel({
-                accessibleDimensionCount,
-                dimensionState,
-                selectedCube,
-                selectedDimension,
-              })}
-            </CardContent>
-          </Card>
+            <Card className="border-slate-200/80 bg-white/90 xl:sticky xl:top-24">
+              <CardHeader>
+                <CardTitle className="text-xl">Details</CardTitle>
+                <CardDescription>
+                  Review the selected cube and dimension metadata without
+                  leaving the current server context.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {renderDetailPanel({
+                  accessibleDimensionCount,
+                  dimensionState,
+                  selectedCube,
+                  selectedDimension,
+                })}
+              </CardContent>
+            </Card>
+          </div>
+
+          <DataPreviewPanel
+            cubeName={selectedCube.name}
+            dimensionStatus={dimensionState.status}
+            dimensions={dimensions}
+            key={selectedCube.name}
+            selectedDimensionName={selectedDimension?.name ?? null}
+            serverName={serverName}
+            {...(dimensionState.status === "error"
+              ? {
+                  dimensionErrorMessage: dimensionState.message,
+                }
+              : {})}
+          />
         </div>
       )}
     </div>
