@@ -1,28 +1,39 @@
 import "server-only";
 
-import { serverEnv } from "@/shared/env/server";
+import {
+  getIbmPaMode,
+  getRequiredIbmPaEnv,
+  hasRequiredIbmPaEnv,
+  ibmPaEnv,
+} from "@/server/ibm-pa/env";
+import type { IbmPaRuntimeConfig } from "@/server/ibm-pa/types";
 
-type IbmPaRuntimeConfig = {
-  baseUrl: string;
-  modelName?: string;
-};
-
-const getIbmPaRuntimeConfig = (): IbmPaRuntimeConfig | null => {
-  if (!serverEnv.IBM_PA_BASE_URL) {
-    return null;
-  }
-
-  if (!serverEnv.IBM_PA_MODEL_NAME) {
+const getIbmPaRuntimeConfig = (): IbmPaRuntimeConfig => {
+  if (!hasRequiredIbmPaEnv()) {
     return {
-      baseUrl: serverEnv.IBM_PA_BASE_URL,
+      isConfigured: false,
+      mode: "mock",
+      ...(ibmPaEnv.IBM_PA_TM1_SERVER
+        ? {
+            targetTm1Server: ibmPaEnv.IBM_PA_TM1_SERVER,
+          }
+        : {}),
     };
   }
 
+  const liveEnv = getRequiredIbmPaEnv();
+
   return {
-    baseUrl: serverEnv.IBM_PA_BASE_URL,
-    modelName: serverEnv.IBM_PA_MODEL_NAME,
+    baseUrl: liveEnv.IBM_PA_BASE_URL,
+    isConfigured: true,
+    mode: getIbmPaMode(),
+    tenantId: liveEnv.IBM_PA_TENANT_ID,
+    ...(liveEnv.IBM_PA_TM1_SERVER
+      ? {
+          targetTm1Server: liveEnv.IBM_PA_TM1_SERVER,
+        }
+      : {}),
   };
 };
 
 export { getIbmPaRuntimeConfig };
-export type { IbmPaRuntimeConfig };

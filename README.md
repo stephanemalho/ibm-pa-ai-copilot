@@ -11,6 +11,7 @@ Production-minded POC scaffold for an IBM Planning Analytics AI Copilot web app 
 - Minimal, scalable folder structure for chat, IBM Planning Analytics, and AI provider work
 - Placeholder homepage, chat page, and healthcheck API route
 - Minimal shadcn/ui primitives for a clean UI base
+- Server-side IBM Planning Analytics read-only client with mock fallback mode
 
 ## Project structure
 
@@ -63,6 +64,42 @@ pnpm dev
 - `pnpm format:check`
 - `pnpm check`
 
+## IBM Planning Analytics setup
+
+The IBM integration is server-side only and automatically runs in one of two modes:
+
+- `live`: enabled when `IBM_PA_BASE_URL`, `IBM_PA_TENANT_ID`, and `IBM_PA_API_KEY` are all present
+- `mock`: used automatically when those variables are missing
+
+Required live variables:
+
+```bash
+IBM_PA_BASE_URL=https://xxxxxxxxx.planninganalytics.saas.ibm.com
+IBM_PA_TENANT_ID=xxxxxxxx
+IBM_PA_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Optional live variable:
+
+```bash
+IBM_PA_TM1_SERVER=your_tm1_server_name
+```
+
+Authentication details implemented in this POC:
+
+- username: `apikey`
+- password: `IBM_PA_API_KEY`
+- login endpoint: `/api/{tenantId}/v0/rolemgmt/v1/users/me`
+- session cookie: stored server-side in memory and reused for subsequent IBM requests
+
+Example IBM API routes:
+
+- `/api/ibm/health`
+- `/api/ibm/servers`
+- `/api/ibm/cubes`
+- `/api/ibm/dimensions?cube=Plan_Budget`
+- `/api/ibm/dimensions?cube=Plan_Budget&server=your_tm1_server_name&sampleSize=5`
+
 ## Docs
 
 - [Architecture](./docs/architecture.md)
@@ -70,6 +107,7 @@ pnpm dev
 
 ## Notes
 
-- IBM Planning Analytics authentication is intentionally not implemented yet.
+- IBM Planning Analytics integration is read-only in this step.
+- No IBM credentials are exposed to client components or `NEXT_PUBLIC` variables.
 - AI provider logic is intentionally scaffolded, not implemented.
 - The architecture is ready for IBM PA integration, Vercel AI SDK wiring, and swappable LLM providers in a later step.
