@@ -99,7 +99,10 @@ type Tm1ServerAccessibilityClassification =
   | "server_not_reachable_by_endpoint"
   | "unexpected_upstream_error";
 
+type AccessResourceKind = "server" | "cube" | "dimension";
+
 type Tm1ServerAccessibilityDiagnostic = {
+  kind: AccessResourceKind;
   classification: Tm1ServerAccessibilityClassification;
   message: string;
   name: string;
@@ -110,6 +113,42 @@ type Tm1ServerAccessibilityDiagnostic = {
 type Tm1ServerAccessibilityDiagnosticsResult = {
   mode: IbmPaMode;
   servers: Tm1ServerAccessibilityDiagnostic[];
+};
+
+type CubeAccessibilityDiagnostic = {
+  kind: AccessResourceKind;
+  classification: Tm1ServerAccessibilityClassification;
+  message: string;
+  name: string;
+  reachable: boolean;
+  serverName: string;
+  statusCode?: number;
+};
+
+type CubeAccessibilityDiagnosticsResult = {
+  cubes: CubeAccessibilityDiagnostic[];
+  mode: IbmPaMode;
+  serverName: string;
+};
+
+type DimensionAccessibilityDiagnostic = {
+  kind: AccessResourceKind;
+  classification: Tm1ServerAccessibilityClassification;
+  cubeName: string;
+  hierarchyName?: string;
+  members: string[];
+  message: string;
+  name: string;
+  reachable: boolean;
+  serverName: string;
+  statusCode?: number;
+};
+
+type DimensionAccessibilityDiagnosticsResult = {
+  cubeName: string;
+  dimensions: DimensionAccessibilityDiagnostic[];
+  mode: IbmPaMode;
+  serverName: string;
 };
 
 type ListCubesResult = {
@@ -166,11 +205,16 @@ type IbmPaRequestOptions = {
 };
 
 export type {
+  AccessResourceKind,
+  CubeAccessibilityDiagnostic,
+  CubeAccessibilityDiagnosticsResult,
   CubeDimension,
   CubeDimensionsResult,
   CubeSampleMemberSet,
   CubeSampleMembersResult,
   CubeSummary,
+  DimensionAccessibilityDiagnostic,
+  DimensionAccessibilityDiagnosticsResult,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
   IbmPaHealthStatus,

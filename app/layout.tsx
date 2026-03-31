@@ -25,7 +25,7 @@ const RootLayout = ({ children }: RootLayoutProps): ReactNode => {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-5 sm:px-8">
+        <div className="mx-auto flex min-h-screen max-w-screen-2xl flex-col px-6 py-5 sm:px-8">
           <header className="mb-10 flex items-center justify-between gap-4 rounded-full border border-white/70 bg-white/75 px-5 py-3 shadow-panel backdrop-blur">
             <Link
               className="font-mono text-sm font-medium tracking-wide text-slate-700"

@@ -8,11 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
 import { CubeExplorer } from "@/features/ibm-pa/components/cube-explorer";
-import { ServerStatusBadge } from "@/features/ibm-pa/components/server-status-badge";
 import {
+  getCubeAccessibilityDiagnostics,
   getServerAccessibilityDiagnostics,
-  listCubes,
 } from "@/server/ibm-pa/client";
 
 export const dynamic = "force-dynamic";
@@ -35,22 +35,26 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
     notFound();
   }
 
-  const cubesResult = server.reachable
-    ? await listCubes({
-        serverName,
-      })
+  const cubeDiagnostics = server.reachable
+    ? await getCubeAccessibilityDiagnostics(serverName)
     : {
         cubes: [],
         mode: diagnostics.mode,
         serverName,
       };
+  const accessibleCubeCount = cubeDiagnostics.cubes.filter(
+    (cube) => cube.reachable,
+  ).length;
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-6 rounded-[2rem] border border-white/80 bg-white/80 p-8 shadow-panel backdrop-blur lg:grid-cols-[1.1fr_0.9fr]">
+      <section className="grid gap-6 rounded-[2rem] border border-white/80 bg-white/80 p-8 shadow-panel backdrop-blur xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.8fr)] xl:p-10">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
-            <ServerStatusBadge server={server} />
+            <AccessStatusBadge
+              classification={server.classification}
+              reachable={server.reachable}
+            />
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
               Server explorer
             </span>
@@ -77,7 +81,8 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
           <CardContent className="space-y-3 text-sm text-slate-200">
             <p>Reachable: {server.reachable ? "Yes" : "No"}</p>
             <p>Status code: {server.statusCode ?? "N/A"}</p>
-            <p>Cubes discovered: {cubesResult.cubes.length}</p>
+            <p>Cubes discovered: {cubeDiagnostics.cubes.length}</p>
+            <p>Accessible cubes: {accessibleCubeCount}</p>
           </CardContent>
         </Card>
       </section>
@@ -93,7 +98,7 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
             </CardDescription>
           </CardHeader>
         </Card>
-      ) : cubesResult.cubes.length === 0 ? (
+      ) : cubeDiagnostics.cubes.length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">No cubes returned</CardTitle>
@@ -105,13 +110,8 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
         </Card>
       ) : (
         <CubeExplorer
-          initialCubes={cubesResult.cubes}
+          initialCubes={cubeDiagnostics.cubes}
           serverName={serverName}
-          {...(cubesResult.cubes[0]?.name
-            ? {
-                initialCubeName: cubesResult.cubes[0].name,
-              }
-            : {})}
         />
       )}
     </div>

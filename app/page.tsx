@@ -108,7 +108,7 @@ const HomePage = async (): Promise<ReactNode> => {
             </CardHeader>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
             {serverDiagnostics.servers.map((server) => (
               <ServerCard key={server.name} server={server} />
             ))}

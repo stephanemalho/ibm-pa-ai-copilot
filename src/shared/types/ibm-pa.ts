@@ -6,7 +6,10 @@ type ServerAccessibilityClassification =
   | "server_not_reachable_by_endpoint"
   | "unexpected_upstream_error";
 
+type AccessResourceKind = "server" | "cube" | "dimension";
+
 type ServerAccessibilityDiagnostic = {
+  kind: AccessResourceKind;
   classification: ServerAccessibilityClassification;
   message: string;
   name: string;
@@ -17,6 +20,22 @@ type ServerAccessibilityDiagnostic = {
 type ServerAccessibilityResponse = {
   mode: IbmPaMode;
   servers: ServerAccessibilityDiagnostic[];
+};
+
+type CubeAccessibilityDiagnostic = {
+  kind: AccessResourceKind;
+  classification: ServerAccessibilityClassification;
+  message: string;
+  name: string;
+  reachable: boolean;
+  serverName: string;
+  statusCode?: number | undefined;
+};
+
+type CubeAccessibilityResponse = {
+  cubes: CubeAccessibilityDiagnostic[];
+  mode: IbmPaMode;
+  serverName: string;
 };
 
 type CubeSummary = {
@@ -45,6 +64,26 @@ type CubeSampleMemberSet = {
   serverName: string;
 };
 
+type DimensionAccessibilityDiagnostic = {
+  kind: AccessResourceKind;
+  classification: ServerAccessibilityClassification;
+  cubeName: string;
+  hierarchyName?: string | undefined;
+  members: string[];
+  message: string;
+  name: string;
+  reachable: boolean;
+  serverName: string;
+  statusCode?: number | undefined;
+};
+
+type DimensionAccessibilityResponse = {
+  cubeName: string;
+  dimensions: DimensionAccessibilityDiagnostic[];
+  mode: IbmPaMode;
+  serverName: string;
+};
+
 type CubeDimensionsResponse = {
   cubeName: string;
   dimensions: CubeDimension[];
@@ -54,11 +93,16 @@ type CubeDimensionsResponse = {
 };
 
 export type {
+  AccessResourceKind,
+  CubeAccessibilityDiagnostic,
+  CubeAccessibilityResponse,
   CubeDimension,
   CubeDimensionsResponse,
   CubeSampleMemberSet,
   CubeSummary,
   CubesResponse,
+  DimensionAccessibilityDiagnostic,
+  DimensionAccessibilityResponse,
   IbmPaMode,
   ServerAccessibilityClassification,
   ServerAccessibilityDiagnostic,

@@ -1,20 +1,24 @@
 import type { ReactNode } from "react";
 
-import type { ServerAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
+import type { ServerAccessibilityClassification } from "@/shared/types/ibm-pa";
 import { cn } from "@/shared/lib/utils";
 
-type ServerStatusBadgeProps = {
-  server: ServerAccessibilityDiagnostic;
+type AccessStatusBadgeProps = {
+  classification: ServerAccessibilityClassification;
+  reachable: boolean;
 };
 
-const ServerStatusBadge = ({ server }: ServerStatusBadgeProps): ReactNode => {
-  const label = server.reachable ? "Accessible" : getFallbackLabel(server);
+const AccessStatusBadge = ({
+  classification,
+  reachable,
+}: AccessStatusBadgeProps): ReactNode => {
+  const label = reachable ? "Accessible" : getFallbackLabel(classification);
 
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide",
-        server.reachable
+        reachable
           ? "bg-emerald-100 text-emerald-800"
           : "bg-slate-200 text-slate-600",
       )}
@@ -24,8 +28,10 @@ const ServerStatusBadge = ({ server }: ServerStatusBadgeProps): ReactNode => {
   );
 };
 
-const getFallbackLabel = (server: ServerAccessibilityDiagnostic): string => {
-  switch (server.classification) {
+const getFallbackLabel = (
+  classification: ServerAccessibilityClassification,
+): string => {
+  switch (classification) {
     case "authenticated_but_not_authorized":
       return "Unauthorized";
     case "server_not_reachable_by_endpoint":
@@ -37,4 +43,4 @@ const getFallbackLabel = (server: ServerAccessibilityDiagnostic): string => {
   }
 };
 
-export { ServerStatusBadge };
+export { AccessStatusBadge };

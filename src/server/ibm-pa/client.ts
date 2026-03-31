@@ -22,10 +22,14 @@ import {
 } from "@/server/ibm-pa/schemas";
 import { getStoredIbmPaSession } from "@/server/ibm-pa/session-store";
 import type {
+  CubeAccessibilityDiagnostic,
+  CubeAccessibilityDiagnosticsResult,
   CubeDimension,
   CubeDimensionsResult,
   CubeSampleMemberSet,
   CubeSampleMembersResult,
+  DimensionAccessibilityDiagnostic,
+  DimensionAccessibilityDiagnosticsResult,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
   IbmPaHealthStatus,
@@ -135,6 +139,7 @@ class IbmPaClient {
         mode: "mock",
         servers: serversResult.servers.map((server) => {
           return {
+            kind: "server",
             classification: "accessible",
             message:
               "Mock mode is active, so this server is treated as accessible for diagnostics.",
@@ -154,6 +159,113 @@ class IbmPaClient {
     return {
       mode: "live",
       servers: diagnostics,
+    };
+  }
+
+  public async getCubeAccessibilityDiagnostics(
+    serverName: string,
+  ): Promise<CubeAccessibilityDiagnosticsResult> {
+    const cubesResult = await this.listCubes({
+      serverName,
+    });
+
+    if (cubesResult.mode === "mock") {
+      return {
+        cubes: cubesResult.cubes.map((cube) => {
+          return {
+            kind: "cube",
+            classification: "accessible",
+            message:
+              "Mock mode is active, so this cube is treated as accessible for diagnostics.",
+            name: cube.name,
+            reachable: true,
+            serverName,
+          };
+        }),
+        mode: "mock",
+        serverName,
+      };
+    }
+
+    const diagnostics = await Promise.all(
+      cubesResult.cubes.map(async (cube) => {
+        return this.getSingleCubeAccessibilityDiagnostic(serverName, cube.name);
+      }),
+    );
+
+    return {
+      cubes: diagnostics,
+      mode: "live",
+      serverName,
+    };
+  }
+
+  public async getDimensionAccessibilityDiagnostics(params: {
+    cubeName: string;
+    sampleSize?: number;
+    serverName: string;
+  }): Promise<DimensionAccessibilityDiagnosticsResult> {
+    const dimensionsResult = await this.getCubeDimensions({
+      cubeName: params.cubeName,
+      serverName: params.serverName,
+    });
+    const sampleSize = params.sampleSize ?? 5;
+
+    if (dimensionsResult.mode === "mock") {
+      return {
+        cubeName: params.cubeName,
+        dimensions: mockCubeDimensions
+          .filter(
+            (dimension) =>
+              dimension.cubeName === params.cubeName &&
+              dimension.serverName === params.serverName,
+          )
+          .map((dimension) => {
+            const matchingMembers = mockCubeSampleMembers.find(
+              (memberSet) =>
+                memberSet.cubeName === params.cubeName &&
+                memberSet.dimensionName === dimension.dimensionName &&
+                memberSet.serverName === params.serverName,
+            );
+
+            return {
+              kind: "dimension",
+              classification: "accessible",
+              cubeName: params.cubeName,
+              ...(dimension.hierarchyName
+                ? {
+                    hierarchyName: dimension.hierarchyName,
+                  }
+                : {}),
+              members: matchingMembers?.members ?? [],
+              message:
+                "Mock mode is active, so this dimension is treated as accessible for diagnostics.",
+              name: dimension.dimensionName,
+              reachable: true,
+              serverName: params.serverName,
+            };
+          }),
+        mode: "mock",
+        serverName: params.serverName,
+      };
+    }
+
+    const diagnostics = await Promise.all(
+      dimensionsResult.dimensions.map(async (dimension) => {
+        return this.getSingleDimensionAccessibilityDiagnostic({
+          cubeName: params.cubeName,
+          dimensionName: dimension.dimensionName,
+          sampleSize,
+          serverName: params.serverName,
+        });
+      }),
+    );
+
+    return {
+      cubeName: params.cubeName,
+      dimensions: diagnostics,
+      mode: "live",
+      serverName: params.serverName,
     };
   }
 
@@ -407,6 +519,7 @@ class IbmPaClient {
       });
 
       return {
+        kind: "server",
         classification: "accessible",
         message: "The server responded to a lightweight cube metadata query.",
         name: serverName,
@@ -414,6 +527,83 @@ class IbmPaClient {
       };
     } catch (error) {
       return classifyServerAccessibilityError(error, serverName);
+    }
+  }
+
+  private async getSingleCubeAccessibilityDiagnostic(
+    serverName: string,
+    cubeName: string,
+  ): Promise<CubeAccessibilityDiagnostic> {
+    try {
+      await this.getCubeDimensions({
+        cubeName,
+        serverName,
+      });
+
+      return {
+        kind: "cube",
+        classification: "accessible",
+        message:
+          "The cube responded to a lightweight dimensions metadata query.",
+        name: cubeName,
+        reachable: true,
+        serverName,
+      };
+    } catch (error) {
+      return classifyResourceAccessibilityError({
+        error,
+        kind: "cube",
+        name: cubeName,
+        serverName,
+      });
+    }
+  }
+
+  private async getSingleDimensionAccessibilityDiagnostic(params: {
+    cubeName: string;
+    dimensionName: string;
+    sampleSize: number;
+    serverName: string;
+  }): Promise<DimensionAccessibilityDiagnostic> {
+    try {
+      const hierarchyName = await this.getPrimaryHierarchyName(
+        params.dimensionName,
+        params.serverName,
+      );
+      const payload = await requestIbmPaJson({
+        path: `/Dimensions('${escapeODataStringLiteral(params.dimensionName)}')/Hierarchies('${escapeODataStringLiteral(hierarchyName)}')/Elements?$select=Name&$top=${params.sampleSize}`,
+        scope: {
+          kind: "tm1",
+          serverName: params.serverName,
+        },
+      });
+      const items = extractCollectionItems(payload, "dimension elements");
+
+      return {
+        kind: "dimension",
+        classification: "accessible",
+        cubeName: params.cubeName,
+        hierarchyName,
+        members: items.map((item) =>
+          getRequiredName(item, "dimension element"),
+        ),
+        message:
+          "The dimension responded to a lightweight members metadata query.",
+        name: params.dimensionName,
+        reachable: true,
+        serverName: params.serverName,
+      };
+    } catch (error) {
+      return {
+        ...classifyResourceAccessibilityError({
+          error,
+          kind: "dimension",
+          name: params.dimensionName,
+          serverName: params.serverName,
+        }),
+        cubeName: params.cubeName,
+        members: [],
+      };
     }
   }
 
@@ -590,6 +780,20 @@ const getServerAccessibilityDiagnostics =
     return ibmPaClient.getServerAccessibilityDiagnostics();
   };
 
+const getCubeAccessibilityDiagnostics = (
+  serverName: string,
+): Promise<CubeAccessibilityDiagnosticsResult> => {
+  return ibmPaClient.getCubeAccessibilityDiagnostics(serverName);
+};
+
+const getDimensionAccessibilityDiagnostics = (params: {
+  cubeName: string;
+  sampleSize?: number;
+  serverName: string;
+}): Promise<DimensionAccessibilityDiagnosticsResult> => {
+  return ibmPaClient.getDimensionAccessibilityDiagnostics(params);
+};
+
 const getCubeDimensions = (
   params: GetCubeDimensionsParams,
 ): Promise<CubeDimensionsResult> => {
@@ -610,13 +814,18 @@ const classifyServerAccessibilityError = (
   error: unknown,
   serverName: string,
 ): Tm1ServerAccessibilityDiagnostic => {
+  const baseDiagnostic = {
+    kind: "server" as const,
+    name: serverName,
+  };
+
   if (isIbmPaError(error)) {
     if (error.statusCode === 401 || error.statusCode === 403) {
       return {
+        ...baseDiagnostic,
         classification: "authenticated_but_not_authorized",
         message:
-          "Authentication succeeded, but this account is not authorized to query metadata on the server.",
-        name: serverName,
+          "Authentication succeeded, but this account is not authorized to query this metadata resource.",
         reachable: false,
         statusCode: error.statusCode,
       };
@@ -624,35 +833,111 @@ const classifyServerAccessibilityError = (
 
     if (error.statusCode === 400 || error.statusCode === 404) {
       return {
+        ...baseDiagnostic,
         classification: "server_not_reachable_by_endpoint",
-        message: "The TM1 metadata endpoint was not reachable for this server.",
-        name: serverName,
+        message: "The metadata endpoint was not reachable for this resource.",
         reachable: false,
         statusCode: error.statusCode,
       };
     }
 
     return {
+      ...baseDiagnostic,
       classification: "unexpected_upstream_error",
       message:
-        "The upstream service returned an unexpected error during the metadata probe.",
-      name: serverName,
+        "The upstream service returned an unexpected error during the access probe.",
       reachable: false,
       statusCode: error.statusCode,
     };
   }
 
   return {
+    ...baseDiagnostic,
     classification: "unexpected_upstream_error",
-    message: "An unexpected error occurred while probing server accessibility.",
-    name: serverName,
+    message:
+      "An unexpected error occurred while probing resource accessibility.",
     reachable: false,
   };
 };
 
+function classifyResourceAccessibilityError(params: {
+  error: unknown;
+  kind: "cube";
+  name: string;
+  serverName: string;
+}): CubeAccessibilityDiagnostic;
+function classifyResourceAccessibilityError(params: {
+  error: unknown;
+  kind: "dimension";
+  name: string;
+  serverName: string;
+}): Omit<
+  DimensionAccessibilityDiagnostic,
+  "cubeName" | "hierarchyName" | "members"
+>;
+function classifyResourceAccessibilityError(params: {
+  error: unknown;
+  kind: "cube" | "dimension";
+  name: string;
+  serverName: string;
+}):
+  | CubeAccessibilityDiagnostic
+  | Omit<
+      DimensionAccessibilityDiagnostic,
+      "cubeName" | "hierarchyName" | "members"
+    > {
+  const baseDiagnostic = {
+    kind: params.kind,
+    name: params.name,
+    serverName: params.serverName,
+  };
+
+  if (isIbmPaError(params.error)) {
+    if (params.error.statusCode === 401 || params.error.statusCode === 403) {
+      return {
+        ...baseDiagnostic,
+        classification: "authenticated_but_not_authorized",
+        message:
+          "Authentication succeeded, but this account is not authorized to query this metadata resource.",
+        reachable: false,
+        statusCode: params.error.statusCode,
+      };
+    }
+
+    if (params.error.statusCode === 400 || params.error.statusCode === 404) {
+      return {
+        ...baseDiagnostic,
+        classification: "server_not_reachable_by_endpoint",
+        message: "The metadata endpoint was not reachable for this resource.",
+        reachable: false,
+        statusCode: params.error.statusCode,
+      };
+    }
+
+    return {
+      ...baseDiagnostic,
+      classification: "unexpected_upstream_error",
+      message:
+        "The upstream service returned an unexpected error during the access probe.",
+      reachable: false,
+      statusCode: params.error.statusCode,
+    };
+  }
+
+  return {
+    ...baseDiagnostic,
+    classification: "unexpected_upstream_error",
+    message:
+      "An unexpected error occurred while probing resource accessibility.",
+    reachable: false,
+  };
+}
+
 export {
+  getCubeAccessibilityDiagnostics,
   getCubeDimensions,
   getCubeSampleMembers,
+  getDimensionAccessibilityDiagnostics,
   getHealth,
   getIbmPaClient,
   getServerAccessibilityDiagnostics,
