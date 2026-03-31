@@ -93,6 +93,25 @@ type ListTm1ServersResult = {
   servers: Tm1ServerSummary[];
 };
 
+type Tm1ServerAccessibilityClassification =
+  | "accessible"
+  | "authenticated_but_not_authorized"
+  | "server_not_reachable_by_endpoint"
+  | "unexpected_upstream_error";
+
+type Tm1ServerAccessibilityDiagnostic = {
+  classification: Tm1ServerAccessibilityClassification;
+  message: string;
+  name: string;
+  reachable: boolean;
+  statusCode?: number;
+};
+
+type Tm1ServerAccessibilityDiagnosticsResult = {
+  mode: IbmPaMode;
+  servers: Tm1ServerAccessibilityDiagnostic[];
+};
+
 type ListCubesResult = {
   cubes: CubeSummary[];
   mode: IbmPaMode;
@@ -172,5 +191,8 @@ export type {
   MdxQueryResult,
   MdxTuple,
   RunMdxParams,
+  Tm1ServerAccessibilityClassification,
+  Tm1ServerAccessibilityDiagnostic,
+  Tm1ServerAccessibilityDiagnosticsResult,
   Tm1ServerSummary,
 };

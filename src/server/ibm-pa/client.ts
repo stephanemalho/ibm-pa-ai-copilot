@@ -2,7 +2,7 @@ import "server-only";
 
 import { getIbmPaRuntimeConfig } from "@/server/ibm-pa/config";
 import { getIbmPaMode } from "@/server/ibm-pa/env";
-import { IbmPaResponseParseError } from "@/server/ibm-pa/errors";
+import { IbmPaResponseParseError, isIbmPaError } from "@/server/ibm-pa/errors";
 import { logIbmPaInfo } from "@/server/ibm-pa/logger";
 import {
   MOCK_CUBE_NAME,
@@ -36,6 +36,8 @@ import type {
   MdxCell,
   MdxQueryResult,
   RunMdxParams,
+  Tm1ServerAccessibilityDiagnostic,
+  Tm1ServerAccessibilityDiagnosticsResult,
   Tm1ServerSummary,
 } from "@/server/ibm-pa/types";
 
@@ -122,6 +124,36 @@ class IbmPaClient {
       cubes: items.map((item) => normalizeNamedSummary(item, serverName)),
       mode: "live",
       serverName,
+    };
+  }
+
+  public async getServerAccessibilityDiagnostics(): Promise<Tm1ServerAccessibilityDiagnosticsResult> {
+    const serversResult = await this.listTm1Servers();
+
+    if (serversResult.mode === "mock") {
+      return {
+        mode: "mock",
+        servers: serversResult.servers.map((server) => {
+          return {
+            classification: "accessible",
+            message:
+              "Mock mode is active, so this server is treated as accessible for diagnostics.",
+            name: server.id,
+            reachable: true,
+          };
+        }),
+      };
+    }
+
+    const diagnostics = await Promise.all(
+      serversResult.servers.map(async (server) => {
+        return this.getSingleServerAccessibilityDiagnostic(server.id);
+      }),
+    );
+
+    return {
+      mode: "live",
+      servers: diagnostics,
     };
   }
 
@@ -366,6 +398,25 @@ class IbmPaClient {
     return getRequiredName(primaryHierarchy, "dimension hierarchy");
   }
 
+  private async getSingleServerAccessibilityDiagnostic(
+    serverName: string,
+  ): Promise<Tm1ServerAccessibilityDiagnostic> {
+    try {
+      await this.listCubes({
+        serverName,
+      });
+
+      return {
+        classification: "accessible",
+        message: "The server responded to a lightweight cube metadata query.",
+        name: serverName,
+        reachable: true,
+      };
+    } catch (error) {
+      return classifyServerAccessibilityError(error, serverName);
+    }
+  }
+
   private async resolveServerName(serverName?: string): Promise<string> {
     if (serverName) {
       return serverName;
@@ -534,6 +585,11 @@ const listCubes = (params?: ListCubesParams): Promise<ListCubesResult> => {
   return ibmPaClient.listCubes(params);
 };
 
+const getServerAccessibilityDiagnostics =
+  (): Promise<Tm1ServerAccessibilityDiagnosticsResult> => {
+    return ibmPaClient.getServerAccessibilityDiagnostics();
+  };
+
 const getCubeDimensions = (
   params: GetCubeDimensionsParams,
 ): Promise<CubeDimensionsResult> => {
@@ -550,11 +606,56 @@ const runMdx = (params: RunMdxParams): Promise<MdxQueryResult> => {
   return ibmPaClient.runMdx(params);
 };
 
+const classifyServerAccessibilityError = (
+  error: unknown,
+  serverName: string,
+): Tm1ServerAccessibilityDiagnostic => {
+  if (isIbmPaError(error)) {
+    if (error.statusCode === 401 || error.statusCode === 403) {
+      return {
+        classification: "authenticated_but_not_authorized",
+        message:
+          "Authentication succeeded, but this account is not authorized to query metadata on the server.",
+        name: serverName,
+        reachable: false,
+        statusCode: error.statusCode,
+      };
+    }
+
+    if (error.statusCode === 400 || error.statusCode === 404) {
+      return {
+        classification: "server_not_reachable_by_endpoint",
+        message: "The TM1 metadata endpoint was not reachable for this server.",
+        name: serverName,
+        reachable: false,
+        statusCode: error.statusCode,
+      };
+    }
+
+    return {
+      classification: "unexpected_upstream_error",
+      message:
+        "The upstream service returned an unexpected error during the metadata probe.",
+      name: serverName,
+      reachable: false,
+      statusCode: error.statusCode,
+    };
+  }
+
+  return {
+    classification: "unexpected_upstream_error",
+    message: "An unexpected error occurred while probing server accessibility.",
+    name: serverName,
+    reachable: false,
+  };
+};
+
 export {
   getCubeDimensions,
   getCubeSampleMembers,
   getHealth,
   getIbmPaClient,
+  getServerAccessibilityDiagnostics,
   listCubes,
   listTm1Servers,
   runMdx,
