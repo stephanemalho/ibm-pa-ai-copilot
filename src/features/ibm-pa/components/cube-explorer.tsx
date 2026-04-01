@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AccessAwareCard } from "@/features/ibm-pa/components/access-aware-card";
+import { SelectedDimensionPanel } from "@/features/ibm-pa/components/selected-dimension-panel";
 import {
   cubeAccessibilityResponseSchema,
   dimensionAccessibilityResponseSchema,
@@ -51,6 +52,7 @@ type DimensionExplorerState =
     };
 
 const cubesPerPage = 10;
+const dimensionSampleSize = 24;
 
 const CubeExplorer = ({
   initialCubeName,
@@ -146,7 +148,7 @@ const CubeExplorer = ({
 
       try {
         const response = await fetch(
-          `${appRoutes.ibmDimensionAccess}?cube=${encodeURIComponent(selectedCubeName)}&server=${encodeURIComponent(serverName)}`,
+          `${appRoutes.ibmDimensionAccess}?cube=${encodeURIComponent(selectedCubeName)}&server=${encodeURIComponent(serverName)}&sampleSize=${dimensionSampleSize}`,
           {
             cache: "no-store",
           },
@@ -197,10 +199,7 @@ const CubeExplorer = ({
             return currentValue;
           }
 
-          return (
-            parsedPayload.dimensions.find((dimension) => dimension.reachable)
-              ?.name ?? null
-          );
+          return null;
         });
       } catch (error) {
         if (!isActive) {
@@ -252,7 +251,6 @@ const CubeExplorer = ({
   ).length;
   const selectedDimension =
     dimensions.find((dimension) => dimension.name === selectedDimensionName) ??
-    dimensions.find((dimension) => dimension.reachable) ??
     null;
 
   return (
@@ -412,7 +410,7 @@ const CubeExplorer = ({
           </Card>
         </div>
       ) : (
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1.15fr)_minmax(24rem,0.95fr)]">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1.05fr)_minmax(26rem,1.05fr)]">
           <Card className="border-slate-200/80 bg-white/90">
             <CardHeader>
               <CardTitle className="text-xl">Cubes</CardTitle>
@@ -474,17 +472,24 @@ const CubeExplorer = ({
             <CardHeader>
               <CardTitle className="text-xl">Details</CardTitle>
               <CardDescription>
-                Review the selected cube and dimension metadata without leaving
-                the current server context.
+                Review the selected dimension and browse its members without
+                leaving the current server context.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {renderDetailPanel({
-                accessibleDimensionCount,
-                dimensionState,
-                selectedCube,
-                selectedDimension,
-              })}
+              <SelectedDimensionPanel
+                accessibleDimensionCount={accessibleDimensionCount}
+                dimensionCount={dimensions.length}
+                dimensionStatus={dimensionState.status}
+                selectedCube={selectedCube}
+                selectedDimension={selectedDimension}
+                key={selectedDimension?.name ?? "dimension-placeholder"}
+                {...(dimensionState.status === "error"
+                  ? {
+                      dimensionErrorMessage: dimensionState.message,
+                    }
+                  : {})}
+              />
             </CardContent>
           </Card>
         </div>
@@ -629,122 +634,6 @@ const renderDimensionList = (params: {
           />
         ))}
       </div>
-    </div>
-  );
-};
-
-const renderDetailPanel = (params: {
-  accessibleDimensionCount: number;
-  dimensionState: DimensionExplorerState;
-  selectedCube: CubeAccessibilityDiagnostic | null;
-  selectedDimension: DimensionAccessibilityDiagnostic | null;
-}): ReactNode => {
-  if (!params.selectedCube) {
-    return (
-      <EmptyState
-        description="Select an accessible cube to review its metadata and dimension details."
-        title="No cube selected"
-      />
-    );
-  }
-
-  if (params.dimensionState.status === "loading") {
-    return (
-      <div className="space-y-4">
-        <div className="h-5 w-32 rounded-full bg-slate-200" />
-        <div className="h-24 rounded-2xl bg-slate-100" />
-        <div className="h-24 rounded-2xl bg-slate-100" />
-      </div>
-    );
-  }
-
-  if (params.dimensionState.status === "error") {
-    return (
-      <EmptyState
-        description={params.dimensionState.message}
-        title="Dimension metadata unavailable"
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-          Selected cube
-        </p>
-        <h3 className="text-2xl font-semibold text-slate-950">
-          {params.selectedCube.name}
-        </h3>
-        <p className="text-sm leading-6 text-slate-600">
-          {params.selectedCube.reachable
-            ? "This cube is ready for read-only dimension exploration."
-            : "This cube is visible in the explorer, but not available for deeper inspection."}
-        </p>
-      </div>
-
-      <div className="space-y-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-        <DetailRow label="Server" value={params.selectedCube.serverName} />
-        <DetailRow
-          label="Cube status"
-          value={params.selectedCube.reachable ? "Accessible" : "Unavailable"}
-        />
-        <DetailRow
-          label="Accessible dimensions"
-          value={params.accessibleDimensionCount.toString()}
-        />
-      </div>
-
-      {params.selectedDimension ? (
-        <div className="space-y-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-          <div className="space-y-2">
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Selected dimension
-            </p>
-            <h4 className="text-xl font-semibold text-slate-950">
-              {params.selectedDimension.name}
-            </h4>
-            <p className="text-sm leading-6 text-slate-600">
-              Member preview is available for this dimension.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <DetailRow
-              label="Hierarchy"
-              value={
-                params.selectedDimension.hierarchyName ?? "Primary hierarchy"
-              }
-            />
-            <DetailRow
-              label="Sample members"
-              value={params.selectedDimension.members.length.toString()}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {params.selectedDimension.members.length === 0 ? (
-              <span className="text-sm text-slate-500">
-                No sample members returned.
-              </span>
-            ) : (
-              params.selectedDimension.members.map((member) => (
-                <span
-                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700"
-                  key={member}
-                >
-                  {member}
-                </span>
-              ))
-            )}
-          </div>
-        </div>
-      ) : (
-        <EmptyState
-          description="Select an accessible dimension to review hierarchy and sample members."
-          title="No dimension selected"
-        />
-      )}
     </div>
   );
 };
