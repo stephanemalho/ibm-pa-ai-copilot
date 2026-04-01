@@ -99,7 +99,6 @@ Example IBM API routes:
 - `/api/ibm/servers/access`
 - `/api/ibm/cubes`
 - `/api/ibm/cubes/access?server=your_tm1_server_name`
-- `/api/ibm/data-preview`
 - `/api/ibm/dimensions?cube=Plan_Budget`
 - `/api/ibm/dimensions/access?cube=Plan_Budget&server=your_tm1_server_name`
 - `/api/ibm/dimensions?cube=Plan_Budget&server=your_tm1_server_name&sampleSize=5`
@@ -107,8 +106,6 @@ Example IBM API routes:
 Use `/api/ibm/servers/access` during setup to see which discovered TM1 servers are actually usable for metadata calls. The route probes each detected server with a lightweight server-side metadata request and reports whether it is accessible, merely visible but unauthorized, not reachable by that endpoint, or failing with an unexpected upstream error.
 
 The homepage now renders those server diagnostics directly, and accessible servers link to `/servers/[serverName]` for read-only cube and dimension exploration. That server view now keeps discovered cubes and dimensions visible even when some are not effectively accessible, so access gaps are explicit instead of hidden.
-
-The selected cube view also includes a read-only Data Preview workflow. Users can choose a row dimension, review suggested context members for the remaining dimensions, and trigger a constrained server-side preview query that returns live cube data in a tabular format without exposing raw IBM credentials or a client-side MDX editor.
 
 ## Docs
 

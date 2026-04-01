@@ -24,7 +24,10 @@ const ServerCard = ({ server }: ServerCardProps): ReactNode => {
           <MetadataRow label="Resource type" value="TM1 server" />
           <MetadataRow
             label="Status code"
-            value={server.statusCode?.toString() ?? "N/A"}
+            value={
+              server.statusCode?.toString() ??
+              (server.reachable ? "Connecte" : "N/A")
+            }
           />
         </div>
       }

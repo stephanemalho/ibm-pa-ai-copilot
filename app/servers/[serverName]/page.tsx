@@ -65,7 +65,8 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
               {server.name}
             </h1>
             <p className="max-w-2xl text-base leading-7 text-slate-600">
-              {server.message}
+              Browse cubes first, then inspect dimensions and member previews in
+              a read-only workflow tailored to this TM1 server.
             </p>
           </div>
         </div>
@@ -80,9 +81,16 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-slate-200">
             <p>Reachable: {server.reachable ? "Yes" : "No"}</p>
-            <p>Status code: {server.statusCode ?? "N/A"}</p>
+            <p>
+              Status code:{" "}
+              {server.statusCode?.toString() ??
+                (server.reachable ? "Connecte" : "N/A")}
+            </p>
             <p>Cubes discovered: {cubeDiagnostics.cubes.length}</p>
             <p>Accessible cubes: {accessibleCubeCount}</p>
+            <p className="text-slate-300/90">
+              Connection note: {server.message}
+            </p>
           </CardContent>
         </Card>
       </section>
