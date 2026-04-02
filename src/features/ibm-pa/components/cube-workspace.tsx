@@ -304,6 +304,7 @@ const CubeWorkspace = ({
 
         <DataPreviewPanel
           cubeName={cube.name}
+          key={`${cube.serverName}:${cube.name}:${selectedDimensionName ?? "no-dimension"}`}
           selectedDimensionName={selectedDimensionName}
           serverName={cube.serverName}
         />
