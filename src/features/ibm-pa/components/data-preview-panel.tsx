@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
 import { Select } from "@/components/ui/select";
 import {
   cubeDataPreviewResponseSchema,
+  dimensionAccessibilityResponseSchema,
   routeErrorSchema,
 } from "@/features/ibm-pa/lib/route-schemas";
 import { appRoutes } from "@/shared/lib/routes";
@@ -23,12 +24,22 @@ import type {
 
 type DataPreviewPanelProps = {
   cubeName: string;
-  dimensionErrorMessage?: string | undefined;
-  dimensionStatus: "error" | "idle" | "loading" | "success";
-  dimensions: DimensionAccessibilityDiagnostic[];
   selectedDimensionName?: string | null | undefined;
   serverName: string;
 };
+
+type PreviewDimensionsState =
+  | {
+      status: "loading";
+    }
+  | {
+      message: string;
+      status: "error";
+    }
+  | {
+      dimensions: DimensionAccessibilityDiagnostic[];
+      status: "success";
+    };
 
 type PreviewState =
   | {
@@ -48,14 +59,17 @@ type PreviewState =
 
 type FilterSelectionMap = Record<string, string>;
 
+const dimensionSampleSize = 12;
+
 const DataPreviewPanel = ({
   cubeName,
-  dimensionErrorMessage,
-  dimensionStatus,
-  dimensions,
   selectedDimensionName,
   serverName,
 }: DataPreviewPanelProps): ReactNode => {
+  const [previewDimensionsState, setPreviewDimensionsState] =
+    useState<PreviewDimensionsState>({
+      status: "loading",
+    });
   const [rowDimensionName, setRowDimensionName] = useState<string | null>(null);
   const [filterSelections, setFilterSelections] = useState<FilterSelectionMap>(
     {},
@@ -63,18 +77,92 @@ const DataPreviewPanel = ({
   const [previewState, setPreviewState] = useState<PreviewState>({
     status: "idle",
   });
-  const accessibleDimensions = dimensions.filter(
-    (dimension) => dimension.reachable,
-  );
-  const activeRowDimensionName =
-    rowDimensionName ??
-    getDefaultRowDimensionName(accessibleDimensions, selectedDimensionName);
+  const accessibleDimensions = useMemo(() => {
+    return previewDimensionsState.status === "success"
+      ? previewDimensionsState.dimensions.filter((dimension) => dimension.reachable)
+      : [];
+  }, [previewDimensionsState]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadPreviewDimensions = async (): Promise<void> => {
+      try {
+        const response = await fetch(
+          `${appRoutes.ibmDimensionAccess}?cube=${encodeURIComponent(cubeName)}&server=${encodeURIComponent(serverName)}&sampleSize=${dimensionSampleSize}`,
+          {
+            cache: "no-store",
+          },
+        );
+        const payload = (await response.json()) as unknown;
+
+        if (!response.ok) {
+          const parsedError = routeErrorSchema.safeParse(payload);
+
+          if (!isActive) {
+            return;
+          }
+
+          setPreviewDimensionsState({
+            message: parsedError.success
+              ? parsedError.data.error.message
+              : "Unable to load preview dimensions.",
+            status: "error",
+          });
+          return;
+        }
+
+        const parsedPayload = dimensionAccessibilityResponseSchema.parse(payload);
+
+        if (!isActive) {
+          return;
+        }
+
+        setPreviewDimensionsState({
+          dimensions: parsedPayload.dimensions,
+          status: "success",
+        });
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setPreviewDimensionsState({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to load preview dimensions.",
+          status: "error",
+        });
+      }
+    };
+
+    void loadPreviewDimensions();
+
+    return () => {
+      isActive = false;
+    };
+  }, [cubeName, serverName]);
+  const defaultRowDimensionName = useMemo(() => {
+    return getDefaultRowDimensionName(accessibleDimensions, selectedDimensionName);
+  }, [accessibleDimensions, selectedDimensionName]);
+  const activeRowDimensionName = rowDimensionName ?? defaultRowDimensionName;
   const filterDimensions = accessibleDimensions.filter(
-    (dimension) => dimension.name !== activeRowDimensionName,
+    (dimension) =>
+      dimension.name !== activeRowDimensionName && dimension.members.length > 0,
   );
+  const unconstrainedDimensions =
+    previewDimensionsState.status === "success"
+      ? previewDimensionsState.dimensions.filter((dimension) => {
+          if (dimension.name === activeRowDimensionName) {
+            return false;
+          }
+
+          return !dimension.reachable || dimension.members.length === 0;
+        })
+      : [];
   const previewFilters = filterDimensions.flatMap((dimension) => {
-    const selectedMember =
-      filterSelections[dimension.name] ?? dimension.members[0];
+    const selectedMember = filterSelections[dimension.name] ?? dimension.members[0];
 
     if (!selectedMember) {
       return [];
@@ -136,7 +224,6 @@ const DataPreviewPanel = ({
             : "Unable to load the data preview.",
           status: "error",
         });
-
         return;
       }
 
@@ -162,150 +249,188 @@ const DataPreviewPanel = ({
       <CardHeader>
         <CardTitle className="text-xl">Data Preview</CardTitle>
         <CardDescription>
-          Prepare a constrained read-only preview using the selected cube,
-          dimension metadata, and sample members already available in the
-          explorer.
+          Move from schema understanding to guided read-only cube exploration by
+          choosing a row dimension and a simple context for the remaining
+          dimensions.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {dimensionStatus === "loading" ? (
+        {previewDimensionsState.status === "loading" ? (
           <LoadingState />
-        ) : dimensionStatus === "error" ? (
+        ) : previewDimensionsState.status === "error" ? (
           <ErrorState
-            description={
-              dimensionErrorMessage ??
-              "Dimension metadata is required before a data preview can be prepared."
-            }
-            title="Preview unavailable"
+            description={previewDimensionsState.message}
+            title="Preview builder unavailable"
           />
         ) : accessibleDimensions.length === 0 || !activeRowDimensionName ? (
           <EmptyState
-            description="No accessible dimensions are available yet for preview building."
+            description="No accessible dimensions are available yet for a guided data preview."
             title="No preview dimensions"
           />
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
-            <div className="space-y-6">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    Query builder
-                  </p>
-                  <p className="text-sm leading-6 text-slate-600">
-                    Choose a row dimension, review the suggested context
-                    members, then preview up to 10 rows of live cube data.
-                  </p>
-                </div>
-
-                <div className="mt-5 space-y-4">
-                  <Field label="Row dimension">
-                    <Select
-                      onChange={(event) => {
-                        setRowDimensionName(event.target.value);
-                        setPreviewState({
-                          status: "idle",
-                        });
-                      }}
-                      value={activeRowDimensionName}
-                    >
-                      {accessibleDimensions.map((dimension) => (
-                        <option key={dimension.name} value={dimension.name}>
-                          {dimension.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Field>
-
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-slate-700">
-                      Context filters
-                    </p>
-
-                    {filterDimensions.length === 0 ? (
-                      <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
-                        No additional filter dimensions are required for this
-                        preview.
-                      </div>
-                    ) : (
-                      filterDimensions.map((dimension) => {
-                        const selectedMember =
-                          filterSelections[dimension.name] ??
-                          dimension.members[0] ??
-                          "";
-
-                        return (
-                          <Field
-                            key={dimension.name}
-                            label={`${dimension.name}${dimension.members.length > 0 ? ` (${dimension.members.length} sample members)` : ""}`}
-                          >
-                            <Select
-                              disabled={dimension.members.length === 0}
-                              onChange={(event) => {
-                                setFilterSelections((currentValue) => ({
-                                  ...currentValue,
-                                  [dimension.name]: event.target.value,
-                                }));
-                                setPreviewState({
-                                  status: "idle",
-                                });
-                              }}
-                              value={selectedMember}
-                            >
-                              {dimension.members.length === 0 ? (
-                                <option value="">No sample members</option>
-                              ) : (
-                                dimension.members.map((member) => (
-                                  <option key={member} value={member}>
-                                    {member}
-                                  </option>
-                                ))
-                              )}
-                            </Select>
-                          </Field>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
-                  <div className="text-sm text-slate-600">
-                    <p>
-                      Cube:{" "}
-                      <span className="font-medium text-slate-950">
-                        {cubeName}
-                      </span>
-                    </p>
-                    <p>
-                      Server:{" "}
-                      <span className="font-medium text-slate-950">
-                        {serverName}
-                      </span>
-                    </p>
-                  </div>
-
-                  <Button onClick={() => void handlePreview()} type="button">
-                    Preview data
-                  </Button>
-                </div>
-              </div>
+          <div className="space-y-6">
+            <div className="flex flex-wrap gap-3">
+              <SummaryChip
+                label="Accessible dimensions"
+                value={accessibleDimensions.length.toString()}
+              />
+              <SummaryChip
+                label="Context selectors"
+                value={filterDimensions.length.toString()}
+              />
+              <SummaryChip
+                label="Unconstrained dimensions"
+                value={unconstrainedDimensions.length.toString()}
+              />
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Preview result
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  The preview remains read-only and uses a constrained
-                  server-side query built from the selected cube context.
-                </p>
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+              <div className="space-y-6">
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      Guided query builder
+                    </p>
+                    <p className="text-sm leading-6 text-slate-600">
+                      Choose the row axis, keep one member as context for the
+                      other dimensions when available, then trigger a read-only
+                      preview.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    <Field label="Row dimension">
+                      <Select
+                        onChange={(event) => {
+                          setRowDimensionName(event.target.value);
+                          setPreviewState({
+                            status: "idle",
+                          });
+                        }}
+                        value={activeRowDimensionName}
+                      >
+                        {accessibleDimensions.map((dimension) => (
+                          <option key={dimension.name} value={dimension.name}>
+                            {dimension.name}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-slate-700">
+                        Context members
+                      </p>
+
+                      {filterDimensions.length === 0 ? (
+                        <div className="rounded-[1.25rem] border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                          No additional dimension needs a context member for
+                          this preview.
+                        </div>
+                      ) : (
+                        filterDimensions.map((dimension) => {
+                          const selectedMember =
+                            filterSelections[dimension.name] ??
+                            dimension.members[0] ??
+                            "";
+
+                          return (
+                            <Field
+                              key={dimension.name}
+                              label={`${dimension.name}${dimension.members.length > 0 ? ` (${dimension.members.length} sample members)` : ""}`}
+                            >
+                              <Select
+                                disabled={dimension.members.length === 0}
+                                onChange={(event) => {
+                                  setFilterSelections((currentValue) => ({
+                                    ...currentValue,
+                                    [dimension.name]: event.target.value,
+                                  }));
+                                  setPreviewState({
+                                    status: "idle",
+                                  });
+                                }}
+                                value={selectedMember}
+                              >
+                                {dimension.members.length === 0 ? (
+                                  <option value="">No sample members</option>
+                                ) : (
+                                  dimension.members.map((member) => (
+                                    <option key={member} value={member}>
+                                      {member}
+                                    </option>
+                                  ))
+                                )}
+                              </Select>
+                            </Field>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+                    <div className="text-sm text-slate-600">
+                      <p>
+                        Cube:{" "}
+                        <span className="font-medium text-slate-950">
+                          {cubeName}
+                        </span>
+                      </p>
+                      <p>
+                        Server:{" "}
+                        <span className="font-medium text-slate-950">
+                          {serverName}
+                        </span>
+                      </p>
+                    </div>
+
+                    <Button onClick={() => void handlePreview()} type="button">
+                      Preview data
+                    </Button>
+                  </div>
+                </div>
+
+                {unconstrainedDimensions.length > 0 ? (
+                  <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+                    <p className="text-sm font-medium text-slate-900">
+                      Limited context
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Some dimensions cannot currently provide a context member,
+                      so the preview remains constrained only where metadata is
+                      available.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {unconstrainedDimensions.map((dimension) => (
+                        <span
+                          className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+                          key={dimension.name}
+                        >
+                          {dimension.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
-              {renderPreviewResult({
-                previewState,
-                rowDimensionName: activeRowDimensionName,
-              })}
+              <div className="space-y-4">
+                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Preview result
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    The preview stays read-only and uses an existing server-side
+                    route built from the cube context selected above.
+                  </p>
+                </div>
+
+                {renderPreviewResult({
+                  previewState,
+                  rowDimensionName: activeRowDimensionName,
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -321,7 +446,7 @@ const renderPreviewResult = (params: {
   if (params.previewState.status === "idle") {
     return (
       <EmptyState
-        description="Choose the row dimension and context members, then run a preview to see live cube values."
+        description="Choose a row dimension and context members, then run a preview to read live cube values."
         title="No preview yet"
       />
     );
@@ -468,8 +593,8 @@ const LoadingState = (): ReactNode => {
   return (
     <div className="space-y-4">
       <div className="h-5 w-40 rounded-full bg-slate-200" />
-      <div className="h-28 rounded-2xl bg-slate-100" />
-      <div className="h-28 rounded-2xl bg-slate-100" />
+      <div className="h-28 rounded-[1.5rem] bg-slate-100" />
+      <div className="h-28 rounded-[1.5rem] bg-slate-100" />
     </div>
   );
 };
