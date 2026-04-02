@@ -15,6 +15,13 @@ const dimensionsQuerySchema = z.object({
   server: z.string().trim().min(1).optional(),
 });
 
+const dimensionDetailQuerySchema = z.object({
+  cube: z.string().trim().min(1),
+  dimension: z.string().trim().min(1),
+  sampleSize: z.coerce.number().int().min(1).max(25).optional(),
+  server: z.string().trim().min(1),
+});
+
 const parseCubesQuery = (
   searchParams: URLSearchParams,
 ): z.infer<typeof cubesQuerySchema> => {
@@ -25,6 +32,14 @@ const parseDimensionsQuery = (
   searchParams: URLSearchParams,
 ): z.infer<typeof dimensionsQuerySchema> => {
   return dimensionsQuerySchema.parse(
+    Object.fromEntries(searchParams.entries()),
+  );
+};
+
+const parseDimensionDetailQuery = (
+  searchParams: URLSearchParams,
+): z.infer<typeof dimensionDetailQuerySchema> => {
+  return dimensionDetailQuerySchema.parse(
     Object.fromEntries(searchParams.entries()),
   );
 };
@@ -40,4 +55,9 @@ const createIbmPaErrorPayload = (
   return getIbmPaErrorResponse(error);
 };
 
-export { createIbmPaErrorPayload, parseCubesQuery, parseDimensionsQuery };
+export {
+  createIbmPaErrorPayload,
+  parseCubesQuery,
+  parseDimensionDetailQuery,
+  parseDimensionsQuery,
+};

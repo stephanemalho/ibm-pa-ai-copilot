@@ -10,6 +10,7 @@ const appRoutes = {
   ibmCubeAccess: "/api/ibm/cubes/access",
   ibmDimensions: "/api/ibm/dimensions",
   ibmDimensionAccess: "/api/ibm/dimensions/access",
+  ibmDimensionDetail: "/api/ibm/dimensions/detail",
   ibmDataPreview: "/api/ibm/data-preview",
 } as const;
 
@@ -17,4 +18,8 @@ const getServerRoute = (serverName: string): string => {
   return `${appRoutes.servers}/${encodeURIComponent(serverName)}`;
 };
 
-export { appRoutes, getServerRoute };
+const getCubeWorkspaceRoute = (cubeName: string, serverName: string): string => {
+  return `${getServerRoute(serverName)}/cubes/${encodeURIComponent(cubeName)}`;
+};
+
+export { appRoutes, getCubeWorkspaceRoute, getServerRoute };

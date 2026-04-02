@@ -21,11 +21,21 @@ type ServerPageProps = {
   params: Promise<{
     serverName: string;
   }>;
+  searchParams: Promise<{
+    cube?: string | string[] | undefined;
+    q?: string | string[] | undefined;
+  }>;
 };
 
-const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
+const ServerPage = async ({
+  params,
+  searchParams,
+}: ServerPageProps): Promise<ReactNode> => {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const serverName = decodeURIComponent(resolvedParams.serverName);
+  const initialCubeName = getSingleSearchParam(resolvedSearchParams.cube);
+  const initialSearchTerm = getSingleSearchParam(resolvedSearchParams.q);
   const diagnostics = await getServerAccessibilityDiagnostics();
   const server = diagnostics.servers.find(
     (candidate) => candidate.name === serverName,
@@ -118,12 +128,28 @@ const ServerPage = async ({ params }: ServerPageProps): Promise<ReactNode> => {
         </Card>
       ) : (
         <CubeExplorer
+          initialCubeName={initialCubeName}
           initialCubes={cubeDiagnostics.cubes}
+          initialSearchTerm={initialSearchTerm}
           serverName={serverName}
         />
       )}
     </div>
   );
+};
+
+const getSingleSearchParam = (
+  value: string | string[] | undefined,
+): string | undefined => {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return decodeURIComponent(value);
+  }
+
+  if (Array.isArray(value) && value[0]) {
+    return decodeURIComponent(value[0]);
+  }
+
+  return undefined;
 };
 
 export default ServerPage;

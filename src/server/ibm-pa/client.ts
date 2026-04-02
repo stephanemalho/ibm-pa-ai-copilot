@@ -25,11 +25,14 @@ import type {
   CubeAccessibilityDiagnostic,
   CubeAccessibilityDiagnosticsResult,
   CubeDimension,
+  CubeDimensionStructureDiagnostic,
+  CubeDimensionStructureResult,
   CubeDimensionsResult,
   CubeSampleMemberSet,
   CubeSampleMembersResult,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityDiagnosticsResult,
+  GetDimensionAccessibilityDiagnosticParams,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
   IbmPaHealthStatus,
@@ -322,6 +325,66 @@ class IbmPaClient {
     };
   }
 
+  public async getCubeDimensionStructure(params: {
+    cubeName: string;
+    serverName: string;
+  }): Promise<CubeDimensionStructureResult> {
+    const dimensionsResult = await this.getCubeDimensions({
+      cubeName: params.cubeName,
+      serverName: params.serverName,
+    });
+
+    if (dimensionsResult.mode === "mock") {
+      return {
+        cubeName: params.cubeName,
+        dimensions: mockCubeDimensions
+          .filter(
+            (dimension) =>
+              dimension.cubeName === params.cubeName &&
+              dimension.serverName === params.serverName,
+          )
+          .map((dimension) => {
+            return {
+              kind: "dimension",
+              classification: "accessible",
+              cubeName: params.cubeName,
+              ...(dimension.hierarchyName
+                ? {
+                    hierarchyName: dimension.hierarchyName,
+                  }
+                : {}),
+              message:
+                "Mock mode is active, so this dimension is treated as accessible for structure diagnostics.",
+              name: dimension.dimensionName,
+              reachable: true,
+              serverName: params.serverName,
+            };
+          }),
+        mode: "mock",
+        serverName: params.serverName,
+      };
+    }
+
+    const diagnostics = await mapWithConcurrency(
+      dimensionsResult.dimensions,
+      diagnosticProbeConcurrency,
+      async (dimension) => {
+        return this.getSingleDimensionStructureDiagnostic({
+          cubeName: params.cubeName,
+          dimensionName: dimension.dimensionName,
+          serverName: params.serverName,
+        });
+      },
+    );
+
+    return {
+      cubeName: params.cubeName,
+      dimensions: diagnostics,
+      mode: "live",
+      serverName: params.serverName,
+    };
+  }
+
   public async getCubeSampleMembers(
     params: GetCubeSampleMembersParams,
   ): Promise<CubeSampleMembersResult> {
@@ -467,6 +530,65 @@ class IbmPaClient {
     };
   }
 
+  public async getDimensionAccessibilityDiagnostic(
+    params: GetDimensionAccessibilityDiagnosticParams,
+  ): Promise<DimensionAccessibilityDiagnostic> {
+    const serverName = await this.resolveServerName(params.serverName);
+    const sampleSize = params.sampleSize ?? 8;
+
+    if (getIbmPaMode() === "mock") {
+      const matchingDimension = mockCubeDimensions.find(
+        (dimension) =>
+          dimension.cubeName === params.cubeName &&
+          dimension.dimensionName === params.dimensionName &&
+          dimension.serverName === serverName,
+      );
+      const matchingMembers = mockCubeSampleMembers.find(
+        (memberSet) =>
+          memberSet.cubeName === params.cubeName &&
+          memberSet.dimensionName === params.dimensionName &&
+          memberSet.serverName === serverName,
+      );
+
+      if (!matchingDimension) {
+        return {
+          kind: "dimension",
+          classification: "server_not_reachable_by_endpoint",
+          cubeName: params.cubeName,
+          members: [],
+          message: "The requested dimension was not found in mock mode.",
+          name: params.dimensionName,
+          reachable: false,
+          serverName,
+        };
+      }
+
+      return {
+        kind: "dimension",
+        classification: "accessible",
+        cubeName: params.cubeName,
+        ...(matchingDimension.hierarchyName
+          ? {
+              hierarchyName: matchingDimension.hierarchyName,
+            }
+          : {}),
+        members: matchingMembers?.members.slice(0, sampleSize) ?? [],
+        message:
+          "Mock mode is active, so this dimension is treated as accessible for diagnostics.",
+        name: params.dimensionName,
+        reachable: true,
+        serverName,
+      };
+    }
+
+    return this.getSingleDimensionAccessibilityDiagnostic({
+      cubeName: params.cubeName,
+      dimensionName: params.dimensionName,
+      sampleSize,
+      serverName,
+    });
+  }
+
   private async getDimensionSampleMembers(params: {
     cubeName: string;
     dimension: CubeDimension;
@@ -562,6 +684,41 @@ class IbmPaClient {
         name: cubeName,
         serverName,
       });
+    }
+  }
+
+  private async getSingleDimensionStructureDiagnostic(params: {
+    cubeName: string;
+    dimensionName: string;
+    serverName: string;
+  }): Promise<CubeDimensionStructureDiagnostic> {
+    try {
+      const hierarchyName = await this.getPrimaryHierarchyName(
+        params.dimensionName,
+        params.serverName,
+      );
+
+      return {
+        kind: "dimension",
+        classification: "accessible",
+        cubeName: params.cubeName,
+        hierarchyName,
+        message:
+          "The dimension responded to a lightweight hierarchy metadata query.",
+        name: params.dimensionName,
+        reachable: true,
+        serverName: params.serverName,
+      };
+    } catch (error) {
+      return {
+        ...classifyResourceAccessibilityError({
+          error,
+          kind: "dimension",
+          name: params.dimensionName,
+          serverName: params.serverName,
+        }),
+        cubeName: params.cubeName,
+      };
     }
   }
 
@@ -851,10 +1008,23 @@ const getCubeDimensions = (
   return ibmPaClient.getCubeDimensions(params);
 };
 
+const getCubeDimensionStructure = (params: {
+  cubeName: string;
+  serverName: string;
+}): Promise<CubeDimensionStructureResult> => {
+  return ibmPaClient.getCubeDimensionStructure(params);
+};
+
 const getCubeSampleMembers = (
   params: GetCubeSampleMembersParams,
 ): Promise<CubeSampleMembersResult> => {
   return ibmPaClient.getCubeSampleMembers(params);
+};
+
+const getDimensionAccessibilityDiagnostic = (
+  params: GetDimensionAccessibilityDiagnosticParams,
+): Promise<DimensionAccessibilityDiagnostic> => {
+  return ibmPaClient.getDimensionAccessibilityDiagnostic(params);
 };
 
 const runMdx = (params: RunMdxParams): Promise<MdxQueryResult> => {
@@ -986,8 +1156,10 @@ function classifyResourceAccessibilityError(params: {
 
 export {
   getCubeAccessibilityDiagnostics,
+  getCubeDimensionStructure,
   getCubeDimensions,
   getCubeSampleMembers,
+  getDimensionAccessibilityDiagnostic,
   getDimensionAccessibilityDiagnostics,
   getHealth,
   getIbmPaClient,

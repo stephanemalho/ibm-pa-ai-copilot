@@ -151,6 +151,32 @@ type DimensionAccessibilityDiagnosticsResult = {
   serverName: string;
 };
 
+type CubeDimensionStructureDiagnostic = {
+  classification: Tm1ServerAccessibilityClassification;
+  cubeName: string;
+  hierarchyName?: string;
+  kind: AccessResourceKind;
+  message: string;
+  name: string;
+  reachable: boolean;
+  serverName: string;
+  statusCode?: number;
+};
+
+type CubeDimensionStructureResult = {
+  cubeName: string;
+  dimensions: CubeDimensionStructureDiagnostic[];
+  mode: IbmPaMode;
+  serverName: string;
+};
+
+type GetDimensionAccessibilityDiagnosticParams = {
+  cubeName: string;
+  dimensionName: string;
+  sampleSize?: number;
+  serverName: string;
+};
+
 type ListCubesResult = {
   cubes: CubeSummary[];
   mode: IbmPaMode;
@@ -244,11 +270,14 @@ export type {
   CubeDataPreviewFilter,
   CubeDataPreviewResult,
   CubeDataPreviewRow,
+  CubeDimensionStructureDiagnostic,
+  CubeDimensionStructureResult,
   CubeSampleMemberSet,
   CubeSampleMembersResult,
   CubeSummary,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityDiagnosticsResult,
+  GetDimensionAccessibilityDiagnosticParams,
   GetCubeDataPreviewParams,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,

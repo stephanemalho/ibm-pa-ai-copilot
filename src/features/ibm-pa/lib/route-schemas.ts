@@ -112,6 +112,37 @@ const dimensionAccessibilityResponseSchema = z.object({
   serverName: z.string(),
 });
 
+const cubeDimensionStructureDiagnosticSchema = z.object({
+  kind: z.enum(["server", "cube", "dimension"]),
+  classification: z.enum([
+    "accessible",
+    "authenticated_but_not_authorized",
+    "server_not_reachable_by_endpoint",
+    "unexpected_upstream_error",
+  ]),
+  cubeName: z.string(),
+  hierarchyName: z.string().optional(),
+  message: z.string(),
+  name: z.string(),
+  reachable: z.boolean(),
+  serverName: z.string(),
+  statusCode: z.number().int().optional(),
+});
+
+const cubeDimensionStructureResponseSchema = z.object({
+  cubeName: z.string(),
+  dimensions: z.array(cubeDimensionStructureDiagnosticSchema),
+  mode: z.enum(["live", "mock"]),
+  serverName: z.string(),
+});
+
+const dimensionDetailResponseSchema = z.object({
+  cubeName: z.string(),
+  dimension: dimensionAccessibilityDiagnosticSchema,
+  mode: z.enum(["live", "mock"]),
+  serverName: z.string(),
+});
+
 const cubeDataPreviewResponseSchema = z.object({
   cubeName: z.string(),
   filters: z.array(cubeDataPreviewFilterSchema),
@@ -132,8 +163,10 @@ export {
   cubeAccessibilityResponseSchema,
   cubeDataPreviewResponseSchema,
   cubeDimensionsResponseSchema,
+  cubeDimensionStructureResponseSchema,
   cubesResponseSchema,
   dimensionAccessibilityResponseSchema,
+  dimensionDetailResponseSchema,
   routeErrorSchema,
   serverAccessibilityResponseSchema,
 };

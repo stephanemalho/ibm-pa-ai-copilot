@@ -115,6 +115,32 @@ type DimensionAccessibilityResponse = {
   serverName: string;
 };
 
+type CubeDimensionStructureDiagnostic = {
+  classification: ServerAccessibilityClassification;
+  cubeName: string;
+  hierarchyName?: string | undefined;
+  kind: AccessResourceKind;
+  message: string;
+  name: string;
+  reachable: boolean;
+  serverName: string;
+  statusCode?: number | undefined;
+};
+
+type CubeDimensionStructureResponse = {
+  cubeName: string;
+  dimensions: CubeDimensionStructureDiagnostic[];
+  mode: IbmPaMode;
+  serverName: string;
+};
+
+type DimensionDetailResponse = {
+  cubeName: string;
+  dimension: DimensionAccessibilityDiagnostic;
+  mode: IbmPaMode;
+  serverName: string;
+};
+
 type CubeDimensionsResponse = {
   cubeName: string;
   dimensions: CubeDimension[];
@@ -133,8 +159,11 @@ export type {
   CubeDataPreviewRequest,
   CubeDataPreviewResponse,
   CubeDataPreviewRow,
+  CubeDimensionStructureDiagnostic,
+  CubeDimensionStructureResponse,
   CubeSampleMemberSet,
   CubeSummary,
+  DimensionDetailResponse,
   CubesResponse,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityResponse,
