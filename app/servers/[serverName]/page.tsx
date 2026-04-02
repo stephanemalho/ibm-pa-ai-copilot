@@ -23,6 +23,7 @@ type ServerPageProps = {
   }>;
   searchParams: Promise<{
     cube?: string | string[] | undefined;
+    flow?: string | string[] | undefined;
     q?: string | string[] | undefined;
   }>;
 };

@@ -2,12 +2,18 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BusinessFlowContextBanner } from "@/features/ibm-pa/components/business-flow-context-banner";
 import { CubeWorkspace } from "@/features/ibm-pa/components/cube-workspace";
 import { CubeWorkspaceHeader } from "@/features/ibm-pa/components/cube-workspace-header";
+import {
+  getBusinessFlow,
+  getBusinessFlowPreviewDefaults,
+} from "@/features/ibm-pa/lib/business-flows";
 import {
   getCubeAccessibilityDiagnostics,
   getCubeDimensionStructure,
   getDimensionAccessibilityDiagnostic,
+  getDimensionAccessibilityDiagnostics,
   getServerAccessibilityDiagnostics,
 } from "@/server/ibm-pa/client";
 
@@ -20,6 +26,7 @@ type CubeWorkspacePageProps = {
   }>;
   searchParams: Promise<{
     dimension?: string | string[] | undefined;
+    flow?: string | string[] | undefined;
     fromSearch?: string | string[] | undefined;
   }>;
 };
@@ -33,7 +40,9 @@ const CubeWorkspacePage = async ({
   const serverName = decodeURIComponent(resolvedParams.serverName);
   const cubeName = decodeURIComponent(resolvedParams.cubeName);
   const requestedDimension = getSingleSearchParam(resolvedSearchParams.dimension);
+  const businessFlowId = getSingleSearchParam(resolvedSearchParams.flow);
   const fromSearch = getSingleSearchParam(resolvedSearchParams.fromSearch);
+  const businessFlow = businessFlowId ? getBusinessFlow(businessFlowId) : undefined;
   const diagnostics = await getServerAccessibilityDiagnostics();
   const server = diagnostics.servers.find(
     (candidate) => candidate.name === serverName,
@@ -60,10 +69,18 @@ const CubeWorkspacePage = async ({
     return (
       <div className="space-y-8">
         <CubeWorkspaceHeader
+          businessFlowId={businessFlow?.id}
           cube={cube}
           dimensionCount={0}
           fromSearch={fromSearch}
         />
+
+        {businessFlow ? (
+          <BusinessFlowContextBanner
+            flow={businessFlow}
+            serverName={serverName}
+          />
+        ) : null}
 
         <Card className="border-slate-200 bg-slate-50">
           <CardHeader>
@@ -82,25 +99,45 @@ const CubeWorkspacePage = async ({
     cubeName,
     serverName,
   });
+  const flowDimensionDiagnostics = businessFlow
+    ? await getDimensionAccessibilityDiagnostics({
+        cubeName,
+        sampleSize: 12,
+        serverName,
+      })
+    : null;
+  const businessFlowPreviewDefaults =
+    businessFlow && flowDimensionDiagnostics
+      ? getBusinessFlowPreviewDefaults(
+          businessFlow,
+          flowDimensionDiagnostics.dimensions.filter((dimension) => dimension.reachable),
+        )
+      : undefined;
   const selectedDimensionName =
     requestedDimension ??
+    businessFlowPreviewDefaults?.selectedDimensionName ??
     dimensionStructure.dimensions.find((dimension) => dimension.reachable)?.name ??
     null;
-  const initialSelectedDimension =
-    selectedDimensionName &&
-    dimensionStructure.dimensions.some(
-      (dimension) => dimension.name === selectedDimensionName,
-    )
-      ? await getDimensionAccessibilityDiagnostic({
-          cubeName,
-          dimensionName: selectedDimensionName,
-          sampleSize: 24,
-          serverName,
-        })
-      : null;
+  const initialSelectedDimension = selectedDimensionName
+    ? (flowDimensionDiagnostics?.dimensions.find(
+        (dimension) => dimension.name === selectedDimensionName,
+      ) ??
+        (dimensionStructure.dimensions.some(
+          (dimension) => dimension.name === selectedDimensionName,
+        )
+          ? await getDimensionAccessibilityDiagnostic({
+              cubeName,
+              dimensionName: selectedDimensionName,
+              sampleSize: 24,
+              serverName,
+            })
+          : null))
+    : null;
 
   return (
     <CubeWorkspace
+      businessFlow={businessFlow}
+      businessFlowPreviewDefaults={businessFlowPreviewDefaults}
       cube={cube}
       fromSearch={fromSearch}
       initialDimensions={dimensionStructure.dimensions}

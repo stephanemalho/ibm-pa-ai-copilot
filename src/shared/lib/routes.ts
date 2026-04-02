@@ -1,5 +1,6 @@
 const appRoutes = {
   home: "/",
+  flows: "/flows",
   chat: "/chat",
   health: "/api/health",
   servers: "/servers",
@@ -22,4 +23,21 @@ const getCubeWorkspaceRoute = (cubeName: string, serverName: string): string => 
   return `${getServerRoute(serverName)}/cubes/${encodeURIComponent(cubeName)}`;
 };
 
-export { appRoutes, getCubeWorkspaceRoute, getServerRoute };
+const getBusinessFlowRoute = (
+  flowId: string,
+  serverName?: string | undefined,
+): string => {
+  const baseRoute = `${appRoutes.flows}/${encodeURIComponent(flowId)}`;
+
+  if (!serverName) {
+    return baseRoute;
+  }
+
+  const search = new URLSearchParams({
+    server: serverName,
+  });
+
+  return `${baseRoute}?${search.toString()}`;
+};
+
+export { appRoutes, getBusinessFlowRoute, getCubeWorkspaceRoute, getServerRoute };

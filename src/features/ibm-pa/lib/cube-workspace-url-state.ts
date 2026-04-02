@@ -9,6 +9,7 @@ const previewContextSelectionSchema = z.object({
 });
 
 type CubeWorkspaceHrefParams = {
+  businessFlowId?: string | undefined;
   cubeName: string;
   fromSearch?: string | undefined;
   previewContextSelections?: WorkspacePreviewContextSelection[] | undefined;
@@ -23,6 +24,10 @@ const getCubeWorkspaceHref = (params: CubeWorkspaceHrefParams): string => {
 
   if (params.selectedDimensionName) {
     search.set("dimension", params.selectedDimensionName);
+  }
+
+  if (params.businessFlowId) {
+    search.set("flow", params.businessFlowId);
   }
 
   if (params.fromSearch) {

@@ -13,6 +13,10 @@ const primaryNavItems = [
     label: "Home",
   },
   {
+    href: appRoutes.flows,
+    label: "Business Flows",
+  },
+  {
     href: appRoutes.chat,
     label: "Chat",
   },

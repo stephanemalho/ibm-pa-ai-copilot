@@ -24,6 +24,7 @@ import { cn } from "@/shared/lib/utils";
 import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
 type CubeExplorerProps = {
+  businessFlowId?: string | undefined;
   initialCubeName?: string | undefined;
   initialCubes: CubeAccessibilityDiagnostic[];
   initialSearchTerm?: string | undefined;
@@ -33,6 +34,7 @@ type CubeExplorerProps = {
 const cubesPerPage = 10;
 
 const CubeExplorer = ({
+  businessFlowId,
   initialCubeName,
   initialCubes,
   initialSearchTerm,
@@ -226,10 +228,11 @@ const CubeExplorer = ({
                 <CubeBrowserCard
                   cube={cube}
                   href={getCubeHref({
-                    cubeName: cube.name,
-                    searchTerm: cubeSearchTerm,
-                    serverName,
-                  })}
+                  cubeName: cube.name,
+                  flowId: businessFlowId,
+                  searchTerm: cubeSearchTerm,
+                  serverName,
+                })}
                   key={cube.name}
                   selected={cube.name === selectedCube?.name}
                 />
@@ -489,12 +492,14 @@ const EmptyState = ({
 
 const getCubeHref = (params: {
   cubeName: string;
+  flowId?: string | undefined;
   searchTerm: string;
   serverName: string;
 }): string => {
   const trimmedSearchTerm = params.searchTerm.trim();
 
   return getCubeWorkspaceHref({
+    businessFlowId: params.flowId,
     cubeName: params.cubeName,
     ...(trimmedSearchTerm
       ? {

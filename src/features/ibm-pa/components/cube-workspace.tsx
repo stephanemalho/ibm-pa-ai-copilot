@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { BusinessFlowContextBanner } from "@/features/ibm-pa/components/business-flow-context-banner";
 import { CubeDimensionsTable } from "@/features/ibm-pa/components/cube-dimensions-table";
 import { CubeWorkspaceHeader } from "@/features/ibm-pa/components/cube-workspace-header";
 import { DataPreviewPanel } from "@/features/ibm-pa/components/data-preview-panel";
 import { FavoriteToggle } from "@/features/ibm-pa/components/favorite-toggle";
 import { SavedViewsPanel } from "@/features/ibm-pa/components/saved-views-panel";
+import type {
+  BusinessFlowDefinition,
+  BusinessFlowPreviewDefaults,
+} from "@/features/ibm-pa/lib/business-flows";
 import {
   getCubeWorkspaceHref,
   parsePreviewContextSelections,
@@ -30,6 +35,8 @@ import type {
 } from "@/shared/types/ibm-pa";
 
 type CubeWorkspaceProps = {
+  businessFlow?: BusinessFlowDefinition | undefined;
+  businessFlowPreviewDefaults?: BusinessFlowPreviewDefaults | undefined;
   cube: CubeAccessibilityDiagnostic;
   fromSearch?: string | undefined;
   initialDimensions: CubeDimensionStructureDiagnostic[];
@@ -39,6 +46,8 @@ type CubeWorkspaceProps = {
 const dimensionSampleSize = 24;
 
 const CubeWorkspace = ({
+  businessFlow,
+  businessFlowPreviewDefaults,
   cube,
   fromSearch,
   initialDimensions,
@@ -47,23 +56,37 @@ const CubeWorkspace = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addRecentCube } = useWorkspacePersistence();
+  const businessFlowId = searchParams.get("flow") ?? businessFlow?.id;
   const selectedDimensionFromUrl = searchParams.get("dimension");
   const previewRowDimensionFromUrl = searchParams.get("previewRow");
   const previewContextSelectionsFromUrl = useMemo(() => {
     return parsePreviewContextSelections(searchParams.get("previewContext"));
   }, [searchParams]);
+  const effectivePreviewContextSelections = useMemo(() => {
+    if (previewContextSelectionsFromUrl.length > 0) {
+      return previewContextSelectionsFromUrl;
+    }
+
+    return businessFlowPreviewDefaults?.previewContextSelections ?? [];
+  }, [businessFlowPreviewDefaults, previewContextSelectionsFromUrl]);
+  const effectivePreviewRowDimensionName =
+    previewRowDimensionFromUrl ??
+    businessFlowPreviewDefaults?.previewRowDimensionName;
   const defaultDimensionName = useMemo(() => {
     return initialDimensions.find((dimension) => dimension.reachable)?.name ?? null;
   }, [initialDimensions]);
-  const selectedDimensionName = selectedDimensionFromUrl ?? defaultDimensionName;
+  const selectedDimensionName =
+    selectedDimensionFromUrl ??
+    businessFlowPreviewDefaults?.selectedDimensionName ??
+    defaultDimensionName;
   const [previewBuilderState, setPreviewBuilderState] = useState<{
     previewContextSelections: WorkspacePreviewContextSelection[];
     previewRowDimensionName?: string | undefined;
   }>({
-    previewContextSelections: previewContextSelectionsFromUrl,
-    ...(previewRowDimensionFromUrl
+    previewContextSelections: effectivePreviewContextSelections,
+    ...(effectivePreviewRowDimensionName
       ? {
-          previewRowDimensionName: previewRowDimensionFromUrl,
+          previewRowDimensionName: effectivePreviewRowDimensionName,
         }
       : {}),
   });
@@ -168,7 +191,15 @@ const CubeWorkspace = ({
 
     router.replace(
       getCubeWorkspaceHref({
+        businessFlowId,
         cubeName: cube.name,
+        previewContextSelections:
+          previewContextSelectionsFromUrl.length > 0
+            ? previewContextSelectionsFromUrl
+            : businessFlowPreviewDefaults?.previewContextSelections,
+        previewRowDimensionName:
+          previewRowDimensionFromUrl ??
+          businessFlowPreviewDefaults?.previewRowDimensionName,
         selectedDimensionName: defaultDimensionName,
         fromSearch,
         serverName: cube.serverName,
@@ -180,8 +211,12 @@ const CubeWorkspace = ({
   }, [
     cube.name,
     cube.serverName,
+    businessFlowId,
+    businessFlowPreviewDefaults,
     defaultDimensionName,
     fromSearch,
+    previewContextSelectionsFromUrl,
+    previewRowDimensionFromUrl,
     router,
     selectedDimensionFromUrl,
   ]);
@@ -280,10 +315,19 @@ const CubeWorkspace = ({
             serverName={cube.serverName}
           />
         }
+        businessFlowId={businessFlowId ?? undefined}
         cube={cube}
         dimensionCount={initialDimensions.length}
         fromSearch={fromSearch}
       />
+
+      {businessFlow ? (
+        <BusinessFlowContextBanner
+          flow={businessFlow}
+          previewDefaults={businessFlowPreviewDefaults}
+          serverName={cube.serverName}
+        />
+      ) : null}
 
       <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(25rem,0.95fr)]">
         <div className="space-y-4">
@@ -317,6 +361,7 @@ const CubeWorkspace = ({
             onSelectDimension={(dimensionName) => {
               router.push(
                 getCubeWorkspaceHref({
+                  businessFlowId,
                   cubeName: cube.name,
                   selectedDimensionName: dimensionName,
                   fromSearch,
@@ -351,8 +396,8 @@ const CubeWorkspace = ({
 
         <DataPreviewPanel
           cubeName={cube.name}
-          initialContextSelections={previewContextSelectionsFromUrl}
-          initialRowDimensionName={previewRowDimensionFromUrl ?? undefined}
+          initialContextSelections={effectivePreviewContextSelections}
+          initialRowDimensionName={effectivePreviewRowDimensionName ?? undefined}
           key={`${cube.serverName}:${cube.name}:${selectedDimensionName ?? "no-dimension"}:${previewRowDimensionFromUrl ?? "no-row"}:${searchParams.get("previewContext") ?? "no-context"}`}
           onStateChange={handlePreviewStateChange}
           selectedDimensionName={selectedDimensionName}

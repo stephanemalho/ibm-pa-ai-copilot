@@ -11,6 +11,7 @@ import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
 type CubeWorkspaceHeaderProps = {
   actions?: ReactNode;
+  businessFlowId?: string | undefined;
   cube: CubeAccessibilityDiagnostic;
   dimensionCount: number;
   fromSearch?: string | undefined;
@@ -18,18 +19,26 @@ type CubeWorkspaceHeaderProps = {
 
 const CubeWorkspaceHeader = ({
   actions,
+  businessFlowId,
   cube,
   dimensionCount,
   fromSearch,
 }: CubeWorkspaceHeaderProps): ReactNode => {
-  const backHref = getServerBackHref(cube.serverName, cube.name, fromSearch);
+  const backHref = getServerBackHref(
+    cube.serverName,
+    cube.name,
+    fromSearch,
+    businessFlowId,
+  );
   const semantic = getCubeSemanticDescriptor(cube);
 
   return (
     <section className="space-y-5 rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-panel backdrop-blur xl:p-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Button asChild variant="ghost">
-          <Link href={backHref}>Back to cube browser</Link>
+          <Link href={backHref}>
+            {businessFlowId ? "Back to guided cube browser" : "Back to cube browser"}
+          </Link>
         </Button>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -111,10 +120,15 @@ const getServerBackHref = (
   serverName: string,
   cubeName: string,
   fromSearch?: string | undefined,
+  businessFlowId?: string | undefined,
 ): string => {
   const searchParams = new URLSearchParams({
     cube: cubeName,
   });
+
+  if (businessFlowId) {
+    searchParams.set("flow", businessFlowId);
+  }
 
   if (fromSearch) {
     searchParams.set("q", fromSearch);
