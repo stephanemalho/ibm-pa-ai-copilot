@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { AccessAwareCard } from "@/features/ibm-pa/components/access-aware-card";
+import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
 import { FavoriteToggle } from "@/features/ibm-pa/components/favorite-toggle";
 import { FavoritesPanel } from "@/features/ibm-pa/components/favorites-panel";
 import { RecentCubesPanel } from "@/features/ibm-pa/components/recent-cubes-panel";
 import { cubeAccessibilityResponseSchema } from "@/features/ibm-pa/lib/route-schemas";
 import { getCubeWorkspaceHref } from "@/features/ibm-pa/lib/cube-workspace-url-state";
 import { appRoutes } from "@/shared/lib/routes";
+import { cn } from "@/shared/lib/utils";
 import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
 type CubeExplorerProps = {
@@ -216,32 +218,16 @@ const CubeExplorer = ({
               />
             ) : (
               paginatedCubes.map((cube) => (
-                <div className="relative" key={cube.name}>
-                  <AccessAwareCard
-                    accessible={cube.reachable}
-                    classification={cube.classification}
-                    href={getCubeHref({
-                      cubeName: cube.name,
-                      searchTerm: cubeSearchTerm,
-                      serverName,
-                    })}
-                    message={!cube.reachable ? cube.message : undefined}
-                    metadata={<CubeMetadata cube={cube} />}
-                    selected={cube.name === selectedCube?.name}
-                    subtitle={
-                      cube.reachable
-                        ? "Open dedicated cube workspace"
-                        : "Cube visible, but unavailable"
-                    }
-                    title={cube.name}
-                  />
-
-                  <FavoriteToggle
-                    className="absolute right-4 top-4 z-10 h-9 px-3 shadow-sm"
-                    cubeName={cube.name}
-                    serverName={serverName}
-                  />
-                </div>
+                <CubeBrowserCard
+                  cube={cube}
+                  href={getCubeHref({
+                    cubeName: cube.name,
+                    searchTerm: cubeSearchTerm,
+                    serverName,
+                  })}
+                  key={cube.name}
+                  selected={cube.name === selectedCube?.name}
+                />
               ))
             )}
 
@@ -318,6 +304,89 @@ const CubeMetadata = ({
         value={cube.reachable ? "Ready to open" : "Visible only"}
       />
     </div>
+  );
+};
+
+const CubeBrowserCard = ({
+  cube,
+  href,
+  selected,
+}: {
+  cube: CubeAccessibilityDiagnostic;
+  href: string;
+  selected: boolean;
+}): ReactNode => {
+  return (
+    <Card
+      className={cn(
+        "border transition-colors",
+        cube.reachable
+          ? "border-slate-200 bg-white shadow-sm hover:border-slate-300"
+          : "border-slate-200 bg-slate-100/70 text-slate-500",
+        selected && cube.reachable
+          ? "border-emerald-400 ring-2 ring-emerald-100"
+          : "",
+      )}
+    >
+      <CardHeader className="space-y-3 pb-4">
+        <div className="flex items-start justify-between gap-4">
+          {cube.reachable ? (
+            <Link
+              className="block min-w-0 flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              href={href}
+            >
+              <div className="space-y-2">
+                <p className="truncate text-base font-semibold leading-6 text-slate-950">
+                  {cube.name}
+                </p>
+                <p className="text-sm leading-6 text-slate-600">
+                  Open dedicated cube workspace
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="truncate text-base font-semibold leading-6 text-slate-950">
+                {cube.name}
+              </p>
+              <p className="text-sm leading-6 text-slate-500">
+                Cube visible, but unavailable
+              </p>
+            </div>
+          )}
+
+          <div className="flex shrink-0 items-start gap-2">
+            <FavoriteToggle
+              className="border border-slate-200 shadow-sm"
+              cubeName={cube.name}
+              serverName={cube.serverName}
+            />
+            <AccessStatusBadge
+              classification={cube.classification}
+              reachable={cube.reachable}
+            />
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-3 pt-0 text-sm">
+        {cube.reachable ? (
+          <Link
+            className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            href={href}
+          >
+            <CubeMetadata cube={cube} />
+          </Link>
+        ) : (
+          <>
+            <CubeMetadata cube={cube} />
+            {cube.message ? (
+              <p className="text-xs leading-5 text-slate-500">{cube.message}</p>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

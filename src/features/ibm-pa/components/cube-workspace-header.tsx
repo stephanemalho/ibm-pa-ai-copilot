@@ -9,12 +9,14 @@ import { getServerRoute } from "@/shared/lib/routes";
 import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
 type CubeWorkspaceHeaderProps = {
+  actions?: ReactNode;
   cube: CubeAccessibilityDiagnostic;
   dimensionCount: number;
   fromSearch?: string | undefined;
 };
 
 const CubeWorkspaceHeader = ({
+  actions,
   cube,
   dimensionCount,
   fromSearch,
@@ -29,6 +31,7 @@ const CubeWorkspaceHeader = ({
         </Button>
 
         <div className="flex flex-wrap items-center gap-3">
+          {actions}
           <AccessStatusBadge
             classification={cube.classification}
             reachable={cube.reachable}

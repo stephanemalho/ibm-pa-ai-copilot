@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CubeDimensionsTable } from "@/features/ibm-pa/components/cube-dimensions-table";
 import { CubeWorkspaceHeader } from "@/features/ibm-pa/components/cube-workspace-header";
 import { DataPreviewPanel } from "@/features/ibm-pa/components/data-preview-panel";
@@ -274,45 +273,17 @@ const CubeWorkspace = ({
   return (
     <div className="space-y-8">
       <CubeWorkspaceHeader
+        actions={
+          <FavoriteToggle
+            className="border border-slate-200 shadow-sm"
+            cubeName={cube.name}
+            serverName={cube.serverName}
+          />
+        }
         cube={cube}
         dimensionCount={initialDimensions.length}
         fromSearch={fromSearch}
       />
-
-      <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <Card className="border-slate-200/80 bg-white/90">
-          <CardHeader>
-            <CardTitle className="text-xl">Workspace actions</CardTitle>
-            <CardDescription>
-              Keep this cube easy to revisit and preserve the current
-              exploration flow when it becomes useful.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-medium text-slate-900">Favorite cube</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Mark this cube so it stays easy to reach from the browser.
-              </p>
-              <div className="mt-4">
-                <FavoriteToggle
-                  cubeName={cube.name}
-                  serverName={cube.serverName}
-                  showLabel
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <SavedViewsPanel
-          cubeName={cube.name}
-          previewContextSelections={previewBuilderState.previewContextSelections}
-          previewRowDimensionName={previewBuilderState.previewRowDimensionName}
-          selectedDimensionName={selectedDimensionName ?? undefined}
-          serverName={cube.serverName}
-        />
-      </section>
 
       <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(25rem,0.95fr)]">
         <div className="space-y-4">
@@ -388,6 +359,14 @@ const CubeWorkspace = ({
           serverName={cube.serverName}
         />
       </section>
+
+      <SavedViewsPanel
+        cubeName={cube.name}
+        previewContextSelections={previewBuilderState.previewContextSelections}
+        previewRowDimensionName={previewBuilderState.previewRowDimensionName}
+        selectedDimensionName={selectedDimensionName ?? undefined}
+        serverName={cube.serverName}
+      />
     </div>
   );
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Star } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,13 +31,15 @@ const FavoriteToggle = ({
       aria-label={favorite ? "Remove favorite" : "Add favorite"}
       aria-pressed={favorite}
       className={cn(
-        "gap-2",
+        showLabel ? "gap-2 px-3" : "h-9 w-9 p-0",
         favorite
           ? "bg-amber-100 text-amber-900 hover:bg-amber-200"
           : "bg-white text-slate-700 hover:bg-slate-100",
         className,
       )}
-      onClick={() => {
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
         toggleFavorite({
           cubeName,
           serverName,
