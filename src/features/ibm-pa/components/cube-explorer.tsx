@@ -12,8 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AccessAwareCard } from "@/features/ibm-pa/components/access-aware-card";
+import { FavoriteToggle } from "@/features/ibm-pa/components/favorite-toggle";
+import { FavoritesPanel } from "@/features/ibm-pa/components/favorites-panel";
+import { RecentCubesPanel } from "@/features/ibm-pa/components/recent-cubes-panel";
 import { cubeAccessibilityResponseSchema } from "@/features/ibm-pa/lib/route-schemas";
-import { appRoutes, getCubeWorkspaceRoute } from "@/shared/lib/routes";
+import { getCubeWorkspaceHref } from "@/features/ibm-pa/lib/cube-workspace-url-state";
+import { appRoutes } from "@/shared/lib/routes";
 import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
 type CubeExplorerProps = {
@@ -212,25 +216,32 @@ const CubeExplorer = ({
               />
             ) : (
               paginatedCubes.map((cube) => (
-                <AccessAwareCard
-                  accessible={cube.reachable}
-                  classification={cube.classification}
-                  href={getCubeHref({
-                    cubeName: cube.name,
-                    searchTerm: cubeSearchTerm,
-                    serverName,
-                  })}
-                  key={cube.name}
-                  message={!cube.reachable ? cube.message : undefined}
-                  metadata={<CubeMetadata cube={cube} />}
-                  selected={cube.name === selectedCube?.name}
-                  subtitle={
-                    cube.reachable
-                      ? "Open dedicated cube workspace"
-                      : "Cube visible, but unavailable"
-                  }
-                  title={cube.name}
-                />
+                <div className="relative" key={cube.name}>
+                  <AccessAwareCard
+                    accessible={cube.reachable}
+                    classification={cube.classification}
+                    href={getCubeHref({
+                      cubeName: cube.name,
+                      searchTerm: cubeSearchTerm,
+                      serverName,
+                    })}
+                    message={!cube.reachable ? cube.message : undefined}
+                    metadata={<CubeMetadata cube={cube} />}
+                    selected={cube.name === selectedCube?.name}
+                    subtitle={
+                      cube.reachable
+                        ? "Open dedicated cube workspace"
+                        : "Cube visible, but unavailable"
+                    }
+                    title={cube.name}
+                  />
+
+                  <FavoriteToggle
+                    className="absolute right-4 top-4 z-10 h-9 px-3 shadow-sm"
+                    cubeName={cube.name}
+                    serverName={serverName}
+                  />
+                </div>
               ))
             )}
 
@@ -284,6 +295,9 @@ const CubeExplorer = ({
               />
               <DetailRow label="Server" value={serverName} />
             </div>
+
+            <FavoritesPanel currentServerName={serverName} />
+            <RecentCubesPanel currentServerName={serverName} />
           </CardContent>
         </Card>
       </div>
@@ -371,18 +385,17 @@ const getCubeHref = (params: {
   searchTerm: string;
   serverName: string;
 }): string => {
-  const baseHref = getCubeWorkspaceRoute(params.cubeName, params.serverName);
   const trimmedSearchTerm = params.searchTerm.trim();
 
-  if (!trimmedSearchTerm) {
-    return baseHref;
-  }
-
-  const searchParams = new URLSearchParams({
-    fromSearch: trimmedSearchTerm,
+  return getCubeWorkspaceHref({
+    cubeName: params.cubeName,
+    ...(trimmedSearchTerm
+      ? {
+          fromSearch: trimmedSearchTerm,
+        }
+      : {}),
+    serverName: params.serverName,
   });
-
-  return `${baseHref}?${searchParams.toString()}`;
 };
 
 export { CubeExplorer };
