@@ -45,6 +45,8 @@ import type {
   Tm1ServerSummary,
 } from "@/server/ibm-pa/types";
 
+const diagnosticProbeConcurrency = 4;
+
 class IbmPaClient {
   public async getHealth(): Promise<IbmPaHealthStatus> {
     const runtimeConfig = getIbmPaRuntimeConfig();
@@ -187,10 +189,12 @@ class IbmPaClient {
       };
     }
 
-    const diagnostics = await Promise.all(
-      cubesResult.cubes.map(async (cube) => {
+    const diagnostics = await mapWithConcurrency(
+      cubesResult.cubes,
+      diagnosticProbeConcurrency,
+      async (cube) => {
         return this.getSingleCubeAccessibilityDiagnostic(serverName, cube.name);
-      }),
+      },
     );
 
     return {
@@ -250,15 +254,17 @@ class IbmPaClient {
       };
     }
 
-    const diagnostics = await Promise.all(
-      dimensionsResult.dimensions.map(async (dimension) => {
+    const diagnostics = await mapWithConcurrency(
+      dimensionsResult.dimensions,
+      diagnosticProbeConcurrency,
+      async (dimension) => {
         return this.getSingleDimensionAccessibilityDiagnostic({
           cubeName: params.cubeName,
           dimensionName: dimension.dimensionName,
           sampleSize,
           serverName: params.serverName,
         });
-      }),
+      },
     );
 
     return {
@@ -760,7 +766,52 @@ const getRequiredName = (
 };
 
 const escapeODataStringLiteral = (value: string): string => {
-  return value.replaceAll("'", "''");
+  return encodeURIComponent(value.replaceAll("'", "''"));
+};
+
+const mapWithConcurrency = async <TInput, TOutput>(
+  items: TInput[],
+  concurrency: number,
+  mapper: (item: TInput, index: number) => Promise<TOutput>,
+): Promise<TOutput[]> => {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const results: TOutput[] = new Array(items.length);
+  const indexedItems = items.map((item, index) => {
+    return {
+      index,
+      item,
+    };
+  });
+  let nextIndex = 0;
+
+  const worker = async (): Promise<void> => {
+    while (nextIndex < indexedItems.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      const currentEntry = indexedItems[currentIndex];
+
+      if (!currentEntry) {
+        return;
+      }
+
+      results[currentEntry.index] = await mapper(
+        currentEntry.item,
+        currentEntry.index,
+      );
+    }
+  };
+
+  const workerCount = Math.min(concurrency, indexedItems.length);
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      await worker();
+    }),
+  );
+
+  return results;
 };
 
 const getHealth = (): Promise<IbmPaHealthStatus> => {

@@ -84,6 +84,10 @@ const CubeExplorer = ({
   const [dimensionRequestNonce, setDimensionRequestNonce] = useState(0);
 
   useEffect(() => {
+    if (cubeRequestNonce === 0) {
+      return;
+    }
+
     let isActive = true;
 
     const loadCubeDiagnostics = async (): Promise<void> => {
@@ -107,15 +111,16 @@ const CubeExplorer = ({
         }
 
         setCubeDiagnostics(parsedPayload.cubes);
+        setSelectedCubeName((currentValue) => {
+          if (
+            currentValue &&
+            parsedPayload.cubes.some((cube) => cube.name === currentValue)
+          ) {
+            return currentValue;
+          }
 
-        if (
-          selectedCubeName &&
-          parsedPayload.cubes.some((cube) => cube.name === selectedCubeName)
-        ) {
-          return;
-        }
-
-        setSelectedCubeName(null);
+          return null;
+        });
         setSelectedDimensionName(null);
         setDimensionState({
           status: "idle",
@@ -132,7 +137,7 @@ const CubeExplorer = ({
     return () => {
       isActive = false;
     };
-  }, [cubeRequestNonce, selectedCubeName, serverName]);
+  }, [cubeRequestNonce, serverName]);
 
   useEffect(() => {
     if (!selectedCubeName) {
