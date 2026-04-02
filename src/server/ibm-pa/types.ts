@@ -1,6 +1,27 @@
 import "server-only";
 
-type IbmPaMode = "live" | "mock";
+import type {
+  AccessResourceKind,
+  CubeAccessibilityResponse,
+  CubeAccessibilityDiagnostic,
+  CubeDataPreviewFilter,
+  CubeDataPreviewResponse as SharedCubeDataPreviewResponse,
+  CubeDataPreviewRow,
+  CubeDimension,
+  CubeDimensionStructureDiagnostic,
+  CubeSemanticMetadata,
+  CubeSampleMemberSet,
+  CubeSummary,
+  DimensionAccessibilityDiagnostic,
+  DimensionSemanticMetadata,
+  IbmPaMode,
+  ServerAccessibilityClassification as Tm1ServerAccessibilityClassification,
+  ServerAccessibilityDiagnostic as Tm1ServerAccessibilityDiagnostic,
+  Tm1AttributeMap,
+  Tm1HierarchyMetadata,
+  Tm1LocalizedAttributeMap,
+  Tm1Member,
+} from "@/shared/types/ibm-pa";
 
 type IbmPaLogContextValue = boolean | null | number | string | undefined;
 
@@ -25,26 +46,6 @@ type Tm1ServerSummary = {
   id: string;
   isDefault: boolean;
   name: string;
-};
-
-type CubeSummary = {
-  name: string;
-  serverName: string;
-};
-
-type CubeDimension = {
-  cubeName: string;
-  dimensionName: string;
-  hierarchyName?: string;
-  serverName: string;
-};
-
-type CubeSampleMemberSet = {
-  cubeName: string;
-  dimensionName: string;
-  hierarchyName: string;
-  members: string[];
-  serverName: string;
 };
 
 type MdxCellValue = boolean | null | number | string;
@@ -93,36 +94,9 @@ type ListTm1ServersResult = {
   servers: Tm1ServerSummary[];
 };
 
-type Tm1ServerAccessibilityClassification =
-  | "accessible"
-  | "authenticated_but_not_authorized"
-  | "server_not_reachable_by_endpoint"
-  | "unexpected_upstream_error";
-
-type AccessResourceKind = "server" | "cube" | "dimension";
-
-type Tm1ServerAccessibilityDiagnostic = {
-  kind: AccessResourceKind;
-  classification: Tm1ServerAccessibilityClassification;
-  message: string;
-  name: string;
-  reachable: boolean;
-  statusCode?: number;
-};
-
 type Tm1ServerAccessibilityDiagnosticsResult = {
   mode: IbmPaMode;
   servers: Tm1ServerAccessibilityDiagnostic[];
-};
-
-type CubeAccessibilityDiagnostic = {
-  kind: AccessResourceKind;
-  classification: Tm1ServerAccessibilityClassification;
-  message: string;
-  name: string;
-  reachable: boolean;
-  serverName: string;
-  statusCode?: number;
 };
 
 type CubeAccessibilityDiagnosticsResult = {
@@ -131,36 +105,11 @@ type CubeAccessibilityDiagnosticsResult = {
   serverName: string;
 };
 
-type DimensionAccessibilityDiagnostic = {
-  kind: AccessResourceKind;
-  classification: Tm1ServerAccessibilityClassification;
-  cubeName: string;
-  hierarchyName?: string;
-  members: string[];
-  message: string;
-  name: string;
-  reachable: boolean;
-  serverName: string;
-  statusCode?: number;
-};
-
 type DimensionAccessibilityDiagnosticsResult = {
   cubeName: string;
   dimensions: DimensionAccessibilityDiagnostic[];
   mode: IbmPaMode;
   serverName: string;
-};
-
-type CubeDimensionStructureDiagnostic = {
-  classification: Tm1ServerAccessibilityClassification;
-  cubeName: string;
-  hierarchyName?: string;
-  kind: AccessResourceKind;
-  message: string;
-  name: string;
-  reachable: boolean;
-  serverName: string;
-  statusCode?: number;
 };
 
 type CubeDimensionStructureResult = {
@@ -195,27 +144,7 @@ type CubeSampleMembersResult = {
   serverName: string;
 };
 
-type CubeDataPreviewFilter = {
-  dimensionName: string;
-  hierarchyName?: string;
-  memberName: string;
-};
-
-type CubeDataPreviewRow = {
-  formattedValue?: string | null;
-  memberName: string;
-  uniqueName?: string;
-  value: MdxCellValue;
-};
-
-type CubeDataPreviewResult = {
-  cubeName: string;
-  filters: CubeDataPreviewFilter[];
-  mode: IbmPaMode;
-  rowDimensionName: string;
-  rows: CubeDataPreviewRow[];
-  serverName: string;
-};
+type CubeDataPreviewResult = SharedCubeDataPreviewResponse;
 
 type RunMdxParams = {
   cubeName?: string;
@@ -261,15 +190,28 @@ type IbmPaRequestOptions = {
   scope: IbmPaRequestScope;
 };
 
+type Tm1MetadataEnvelope = {
+  attributes: CubeSemanticMetadata["attributes"];
+  caption?: string | undefined;
+  localizedAttributes: CubeSemanticMetadata["localizedAttributes"];
+};
+
+type Tm1DimensionMetadata = DimensionSemanticMetadata;
+
+type Tm1CubeMetadata = CubeSemanticMetadata;
+
+type Tm1HierarchySummary = Tm1HierarchyMetadata;
+
 export type {
   AccessResourceKind,
+  CubeAccessibilityResponse,
   CubeAccessibilityDiagnostic,
   CubeAccessibilityDiagnosticsResult,
-  CubeDimension,
-  CubeDimensionsResult,
   CubeDataPreviewFilter,
   CubeDataPreviewResult,
   CubeDataPreviewRow,
+  CubeDimension,
+  CubeDimensionsResult,
   CubeDimensionStructureDiagnostic,
   CubeDimensionStructureResult,
   CubeSampleMemberSet,
@@ -277,10 +219,11 @@ export type {
   CubeSummary,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityDiagnosticsResult,
-  GetDimensionAccessibilityDiagnosticParams,
+  DimensionSemanticMetadata,
   GetCubeDataPreviewParams,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
+  GetDimensionAccessibilityDiagnosticParams,
   IbmPaHealthStatus,
   IbmPaLogContext,
   IbmPaLogContextValue,
@@ -299,6 +242,14 @@ export type {
   MdxQueryResult,
   MdxTuple,
   RunMdxParams,
+  Tm1CubeMetadata,
+  Tm1DimensionMetadata,
+  Tm1AttributeMap,
+  Tm1HierarchyMetadata,
+  Tm1HierarchySummary,
+  Tm1LocalizedAttributeMap,
+  Tm1MetadataEnvelope,
+  Tm1Member,
   Tm1ServerAccessibilityClassification,
   Tm1ServerAccessibilityDiagnostic,
   Tm1ServerAccessibilityDiagnosticsResult,

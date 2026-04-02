@@ -1,5 +1,36 @@
 import { z } from "zod";
 
+const tm1AttributeMapSchema = z.record(z.string(), z.string());
+
+const tm1LocalizedAttributeMapSchema = z.array(tm1AttributeMapSchema);
+
+const tm1HierarchyMetadataSchema = z.object({
+  attributes: tm1AttributeMapSchema.optional(),
+  caption: z.string().optional(),
+  cardinality: z.number().optional(),
+  defaultMemberName: z.string().optional(),
+  levelNames: z.array(z.string()).optional(),
+  localizedAttributes: tm1LocalizedAttributeMapSchema.optional(),
+  name: z.string(),
+  structure: z.string().optional(),
+  uniqueName: z.string().optional(),
+  visible: z.boolean().optional(),
+});
+
+const tm1MemberSchema = z.object({
+  attributes: tm1AttributeMapSchema.optional(),
+  caption: z.string().optional(),
+  index: z.number().optional(),
+  isPlaceholder: z.boolean().optional(),
+  level: z.number().optional(),
+  localizedAttributes: tm1LocalizedAttributeMapSchema.optional(),
+  name: z.string(),
+  ordinal: z.number().optional(),
+  type: z.string().optional(),
+  uniqueName: z.string().optional(),
+  weight: z.number().optional(),
+});
+
 const serverAccessibilityDiagnosticSchema = z.object({
   kind: z.enum(["server", "cube", "dimension"]),
   classification: z.enum([
@@ -20,8 +51,15 @@ const serverAccessibilityResponseSchema = z.object({
 });
 
 const cubeSummarySchema = z.object({
+  attributes: tm1AttributeMapSchema.optional(),
+  caption: z.string().optional(),
+  cubeType: z.string().optional(),
+  lastDataUpdate: z.string().optional(),
+  lastSchemaUpdate: z.string().optional(),
+  localizedAttributes: tm1LocalizedAttributeMapSchema.optional(),
   name: z.string(),
   serverName: z.string(),
+  uniqueName: z.string().optional(),
 });
 
 const cubesResponseSchema = z.object({
@@ -30,7 +68,7 @@ const cubesResponseSchema = z.object({
   serverName: z.string(),
 });
 
-const cubeAccessibilityDiagnosticSchema = z.object({
+const cubeAccessibilityDiagnosticSchema = cubeSummarySchema.extend({
   kind: z.enum(["server", "cube", "dimension"]),
   classification: z.enum([
     "accessible",
@@ -39,9 +77,7 @@ const cubeAccessibilityDiagnosticSchema = z.object({
     "unexpected_upstream_error",
   ]),
   message: z.string(),
-  name: z.string(),
   reachable: z.boolean(),
-  serverName: z.string(),
   statusCode: z.number().int().optional(),
 });
 
@@ -52,17 +88,24 @@ const cubeAccessibilityResponseSchema = z.object({
 });
 
 const cubeDimensionSchema = z.object({
+  allLeavesHierarchyName: z.string().optional(),
+  attributes: tm1AttributeMapSchema.optional(),
+  caption: z.string().optional(),
   cubeName: z.string(),
-  dimensionName: z.string(),
+  dimensionName: z.string().optional(),
+  hierarchy: tm1HierarchyMetadataSchema.optional(),
   hierarchyName: z.string().optional(),
+  localizedAttributes: tm1LocalizedAttributeMapSchema.optional(),
+  name: z.string(),
   serverName: z.string(),
+  uniqueName: z.string().optional(),
 });
 
 const cubeSampleMemberSetSchema = z.object({
   cubeName: z.string(),
   dimensionName: z.string(),
   hierarchyName: z.string(),
-  members: z.array(z.string()),
+  members: z.array(tm1MemberSchema),
   serverName: z.string(),
 });
 
@@ -88,6 +131,9 @@ const cubeDimensionsResponseSchema = z.object({
 });
 
 const dimensionAccessibilityDiagnosticSchema = z.object({
+  allLeavesHierarchyName: z.string().optional(),
+  attributes: tm1AttributeMapSchema.optional(),
+  caption: z.string().optional(),
   kind: z.enum(["server", "cube", "dimension"]),
   classification: z.enum([
     "accessible",
@@ -96,13 +142,17 @@ const dimensionAccessibilityDiagnosticSchema = z.object({
     "unexpected_upstream_error",
   ]),
   cubeName: z.string(),
+  dimensionName: z.string().optional(),
+  hierarchy: tm1HierarchyMetadataSchema.optional(),
   hierarchyName: z.string().optional(),
-  members: z.array(z.string()),
+  localizedAttributes: tm1LocalizedAttributeMapSchema.optional(),
+  members: z.array(tm1MemberSchema),
   message: z.string(),
   name: z.string(),
   reachable: z.boolean(),
   serverName: z.string(),
   statusCode: z.number().int().optional(),
+  uniqueName: z.string().optional(),
 });
 
 const dimensionAccessibilityResponseSchema = z.object({
@@ -113,6 +163,9 @@ const dimensionAccessibilityResponseSchema = z.object({
 });
 
 const cubeDimensionStructureDiagnosticSchema = z.object({
+  allLeavesHierarchyName: z.string().optional(),
+  attributes: tm1AttributeMapSchema.optional(),
+  caption: z.string().optional(),
   kind: z.enum(["server", "cube", "dimension"]),
   classification: z.enum([
     "accessible",
@@ -121,12 +174,16 @@ const cubeDimensionStructureDiagnosticSchema = z.object({
     "unexpected_upstream_error",
   ]),
   cubeName: z.string(),
+  dimensionName: z.string().optional(),
+  hierarchy: tm1HierarchyMetadataSchema.optional(),
   hierarchyName: z.string().optional(),
+  localizedAttributes: tm1LocalizedAttributeMapSchema.optional(),
   message: z.string(),
   name: z.string(),
   reachable: z.boolean(),
   serverName: z.string(),
   statusCode: z.number().int().optional(),
+  uniqueName: z.string().optional(),
 });
 
 const cubeDimensionStructureResponseSchema = z.object({

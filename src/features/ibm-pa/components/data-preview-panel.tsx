@@ -16,6 +16,10 @@ import {
   dimensionAccessibilityResponseSchema,
   routeErrorSchema,
 } from "@/features/ibm-pa/lib/route-schemas";
+import {
+  getDimensionSemanticDescriptor,
+  getMemberSemanticDescriptor,
+} from "@/features/ibm-pa/lib/semantic";
 import type { WorkspacePreviewContextSelection } from "@/features/ibm-pa/lib/workspace-state-types";
 import { appRoutes } from "@/shared/lib/routes";
 import type {
@@ -184,10 +188,10 @@ const DataPreviewPanel = ({
   }, [activeRowDimensionName, previewDimensionsState]);
   const previewFilters = useMemo(() => {
     return filterDimensions.flatMap((dimension) => {
-      const selectedMember =
-        filterSelections[dimension.name] ?? dimension.members[0];
+      const selectedMemberName =
+        filterSelections[dimension.name] ?? dimension.members[0]?.name;
 
-      if (!selectedMember) {
+      if (!selectedMemberName) {
         return [];
       }
 
@@ -199,7 +203,7 @@ const DataPreviewPanel = ({
                 hierarchyName: dimension.hierarchyName,
               }
             : {}),
-          memberName: selectedMember,
+          memberName: selectedMemberName,
         },
       ];
     });
@@ -351,7 +355,7 @@ const DataPreviewPanel = ({
                       >
                         {accessibleDimensions.map((dimension) => (
                           <option key={dimension.name} value={dimension.name}>
-                            {dimension.name}
+                            {getDimensionSemanticDescriptor(dimension).displayLabel}
                           </option>
                         ))}
                       </Select>
@@ -371,13 +375,15 @@ const DataPreviewPanel = ({
                         filterDimensions.map((dimension) => {
                           const selectedMember =
                             filterSelections[dimension.name] ??
-                            dimension.members[0] ??
+                            dimension.members[0]?.name ??
                             "";
+                          const dimensionSemantic =
+                            getDimensionSemanticDescriptor(dimension);
 
                           return (
                             <Field
                               key={dimension.name}
-                              label={`${dimension.name}${dimension.members.length > 0 ? ` (${dimension.members.length} sample members)` : ""}`}
+                              label={`${dimensionSemantic.displayLabel}${dimension.members.length > 0 ? ` (${dimension.members.length} sample members)` : ""}`}
                             >
                               <Select
                                 disabled={dimension.members.length === 0}
@@ -396,8 +402,8 @@ const DataPreviewPanel = ({
                                   <option value="">No sample members</option>
                                 ) : (
                                   dimension.members.map((member) => (
-                                    <option key={member} value={member}>
-                                      {member}
+                                    <option key={member.uniqueName ?? member.name} value={member.name}>
+                                      {getMemberSemanticDescriptor(member).displayLabel}
                                     </option>
                                   ))
                                 )}
@@ -431,7 +437,7 @@ const DataPreviewPanel = ({
                   </div>
                 </div>
 
-                {unconstrainedDimensions.length > 0 ? (
+                    {unconstrainedDimensions.length > 0 ? (
                   <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
                     <p className="text-sm font-medium text-slate-900">
                       Limited context
@@ -447,7 +453,7 @@ const DataPreviewPanel = ({
                           className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
                           key={dimension.name}
                         >
-                          {dimension.name}
+                          {getDimensionSemanticDescriptor(dimension).displayLabel}
                         </span>
                       ))}
                     </div>
@@ -534,7 +540,7 @@ const renderPreviewResult = (params: {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                  {params.rowDimensionName}
+                  {getDimensionSemanticDescriptor({ name: params.rowDimensionName }).displayLabel}
                 </th>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">
                   Value
@@ -576,7 +582,8 @@ const renderPreviewResult = (params: {
                 className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700"
                 key={`${filter.dimensionName}-${filter.memberName}`}
               >
-                {filter.dimensionName}: {filter.memberName}
+                {getDimensionSemanticDescriptor({ name: filter.dimensionName }).displayLabel}:{" "}
+                {filter.memberName}
               </span>
             ))}
           </div>

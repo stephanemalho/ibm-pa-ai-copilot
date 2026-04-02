@@ -4,6 +4,11 @@ import type { ReactNode } from "react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
+import {
+  getCubeSemanticDescriptor,
+  getDimensionSemanticDescriptor,
+  getMemberSemanticDescriptor,
+} from "@/features/ibm-pa/lib/semantic";
 import type {
   CubeAccessibilityDiagnostic,
   DimensionAccessibilityDiagnostic,
@@ -36,6 +41,16 @@ const SelectedDimensionWorkspacePanel = ({
   detailState,
   selectedDimensionName,
 }: SelectedDimensionWorkspacePanelProps): ReactNode => {
+  const cubeSemantic = getCubeSemanticDescriptor(cube);
+  const dimensionSemantic =
+    detailState.status === "success"
+      ? getDimensionSemanticDescriptor(detailState.dimension)
+      : selectedDimensionName
+        ? getDimensionSemanticDescriptor({
+            name: selectedDimensionName,
+          })
+        : null;
+
   return (
     <Card className="border-slate-200/80 bg-white/95 shadow-none xl:sticky xl:top-24">
       <CardHeader className="space-y-3">
@@ -53,11 +68,12 @@ const SelectedDimensionWorkspacePanel = ({
 
         <div className="space-y-2">
           <CardTitle className="text-xl">
-            {selectedDimensionName ?? "Select a dimension"}
+            {dimensionSemantic?.displayLabel ?? "Select a dimension"}
           </CardTitle>
           <CardDescription className="leading-6">
-            Inspect one structural dimension at a time without expanding the
-            whole cube schema.
+            {dimensionSemantic?.technicalName
+              ? `${dimensionSemantic.technicalName} in ${cubeSemantic.displayLabel}`
+              : "Inspect one structural dimension at a time without expanding the whole cube schema."}
           </CardDescription>
         </div>
       </CardHeader>
@@ -101,6 +117,7 @@ const renderPanelContent = (params: {
   }
 
   const { dimension } = params.detailState;
+  const semantic = getDimensionSemanticDescriptor(dimension);
 
   if (!dimension.reachable) {
     return (
@@ -114,19 +131,39 @@ const renderPanelContent = (params: {
   return (
     <div className="space-y-6">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Metric label="Hierarchy" value={dimension.hierarchyName ?? "Primary hierarchy"} />
+        <Metric
+          label="Hierarchy"
+          value={dimension.hierarchy?.caption ?? dimension.hierarchyName ?? "Primary hierarchy"}
+        />
+        <Metric label="Semantic kind" value={semantic.semanticKind} />
+        <Metric
+          label="Hierarchy structure"
+          value={dimension.hierarchy?.structure ?? "N/A"}
+        />
+        <Metric
+          label="Hierarchy cardinality"
+          value={dimension.hierarchy?.cardinality?.toString() ?? "N/A"}
+        />
         <Metric label="Visible sample members" value={dimension.members.length.toString()} />
-        <Metric label="Cube" value={params.cube.name} />
+        <Metric label="Cube" value={getCubeSemanticDescriptor(params.cube).displayLabel} />
         <Metric label="Server" value={params.cube.serverName} />
+        <Metric label="Semantic source" value={semantic.sourceLabel} />
+        <Metric label="Semantic quality" value={semantic.qualityLabel} />
       </div>
 
       <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-        <p className="text-sm font-medium text-slate-900">Workspace summary</p>
+        <p className="text-sm font-medium text-slate-900">{semantic.displayLabel}</p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          This panel focuses on the currently selected dimension only, so the
-          main workspace stays easy to scan even when the cube contains many
-          dimensions.
+          {semantic.description}
         </p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">{semantic.usageHint}</p>
+        <div className="mt-4 space-y-2 rounded-[1rem] border border-slate-200 bg-white p-4 text-xs text-slate-500">
+          <p>Technical name: {semantic.technicalName}</p>
+          <p>Unique name: {semantic.uniqueName}</p>
+          <p>
+            Hierarchy unique name: {dimension.hierarchy?.uniqueName ?? "N/A"}
+          </p>
+        </div>
       </div>
 
       <section className="space-y-3">
@@ -148,14 +185,36 @@ const renderPanelContent = (params: {
         ) : (
           <div className="max-h-[26rem] overflow-y-auto rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3">
             <div className="grid gap-2">
-              {dimension.members.map((member) => (
-                <div
-                  className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800"
-                  key={member}
-                >
-                  {member}
-                </div>
-              ))}
+              {dimension.members.map((member) => {
+                const memberSemantic = getMemberSemanticDescriptor(member);
+
+                return (
+                  <div
+                    className="rounded-[1rem] border border-slate-200 bg-white px-4 py-3"
+                    key={member.uniqueName ?? member.name}
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-slate-800">
+                        {memberSemantic.displayLabel}
+                      </p>
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                        {memberSemantic.technicalName}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                        <span className="rounded-full bg-slate-100 px-3 py-1">
+                          {memberSemantic.sourceLabel}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1">
+                          {member.type ?? "Type N/A"}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-3 py-1">
+                          Level {member.level?.toString() ?? "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -233,13 +292,18 @@ const InaccessibleState = ({
   cubeName: string;
   dimension: DimensionAccessibilityDiagnostic;
 }): ReactNode => {
+  const semantic = getDimensionSemanticDescriptor(dimension);
+
   return (
     <div className="space-y-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-6">
       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
         Access limited
       </p>
       <div className="space-y-2">
-        <p className="text-base font-semibold text-slate-950">{dimension.name}</p>
+        <p className="text-base font-semibold text-slate-950">{semantic.displayLabel}</p>
+        <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+          {semantic.technicalName}
+        </p>
         <p className="text-sm leading-6 text-slate-600">
           This dimension remains visible in <span className="font-medium">{cubeName}</span>
           , but its detailed metadata cannot be opened with the current access.

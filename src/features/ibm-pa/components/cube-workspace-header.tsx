@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
+import { getCubeSemanticDescriptor } from "@/features/ibm-pa/lib/semantic";
 import { getServerRoute } from "@/shared/lib/routes";
 import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
@@ -22,6 +23,7 @@ const CubeWorkspaceHeader = ({
   fromSearch,
 }: CubeWorkspaceHeaderProps): ReactNode => {
   const backHref = getServerBackHref(cube.serverName, cube.name, fromSearch);
+  const semantic = getCubeSemanticDescriptor(cube);
 
   return (
     <section className="space-y-5 rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-panel backdrop-blur xl:p-10">
@@ -48,25 +50,39 @@ const CubeWorkspaceHeader = ({
             {cube.serverName}
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
-            {cube.name}
+            {semantic.displayLabel}
           </h1>
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {semantic.technicalName}
+          </p>
           <p className="max-w-3xl text-base leading-7 text-slate-600">
             {getHeaderSummary({
-              cubeName: cube.name,
+              cubeName: semantic.displayLabel,
               dimensionCount,
               reachable: cube.reachable,
             })}
+          </p>
+          <p className="max-w-3xl text-sm leading-6 text-slate-500">
+            {semantic.usageHint}
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
           <SummaryBlock
-            label="Server"
-            value={cube.serverName}
+            label="Semantic source"
+            value={semantic.sourceLabel}
+          />
+          <SummaryBlock
+            label="Semantic quality"
+            value={semantic.qualityLabel}
           />
           <SummaryBlock
             label="Dimensions"
             value={dimensionCount.toString()}
+          />
+          <SummaryBlock
+            label="Unique name"
+            value={semantic.uniqueName}
           />
         </div>
       </div>

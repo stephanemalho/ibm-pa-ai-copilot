@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
+import { getDimensionSemanticDescriptor } from "@/features/ibm-pa/lib/semantic";
 import { cn } from "@/shared/lib/utils";
 import type { CubeDimensionStructureDiagnostic } from "@/shared/types/ibm-pa";
 
@@ -36,13 +37,14 @@ const CubeDimensionsTable = ({
               <HeaderCell>Dimension</HeaderCell>
               <HeaderCell>Hierarchy</HeaderCell>
               <HeaderCell>Status</HeaderCell>
-              <HeaderCell>Members</HeaderCell>
+              <HeaderCell>Semantic</HeaderCell>
               <HeaderCell className="text-right">Inspect</HeaderCell>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {dimensions.map((dimension, index) => {
               const isSelected = dimension.name === selectedDimensionName;
+              const semantic = getDimensionSemanticDescriptor(dimension);
 
               return (
                 <tr
@@ -68,15 +70,18 @@ const CubeDimensionsTable = ({
                           dimension.reachable ? "text-slate-950" : "text-slate-600",
                         )}
                       >
-                        {dimension.name}
+                        {semantic.displayLabel}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        Structural dimension
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                        {semantic.technicalName}
                       </p>
+                      <p className="text-xs text-slate-500">{semantic.semanticKind}</p>
                     </div>
                   </BodyCell>
                   <BodyCell>
-                    {dimension.hierarchyName ?? "Primary hierarchy"}
+                    {dimension.hierarchy?.caption ??
+                      dimension.hierarchyName ??
+                      "Primary hierarchy"}
                   </BodyCell>
                   <BodyCell>
                     <AccessStatusBadge
@@ -85,7 +90,7 @@ const CubeDimensionsTable = ({
                     />
                   </BodyCell>
                   <BodyCell>
-                    {dimension.reachable ? "Load on inspect" : "Unavailable"}
+                    {semantic.qualityLabel}
                   </BodyCell>
                   <BodyCell className="text-right">
                     {dimension.reachable ? (
