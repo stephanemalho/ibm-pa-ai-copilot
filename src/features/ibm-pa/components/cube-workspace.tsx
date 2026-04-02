@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { CubeDimensionsTable } from "@/features/ibm-pa/components/cube-dimensions-table";
 import { CubeWorkspaceHeader } from "@/features/ibm-pa/components/cube-workspace-header";
+import { DataPreviewPanel } from "@/features/ibm-pa/components/data-preview-panel";
 import {
   dimensionDetailResponseSchema,
   routeErrorSchema,
@@ -287,6 +288,25 @@ const CubeWorkspace = ({
           cube={cube}
           detailState={effectiveDetailState}
           selectedDimensionName={selectedDimensionName}
+        />
+      </section>
+
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-slate-950">
+            Read-only data preview
+          </h2>
+          <p className="text-sm leading-6 text-slate-600">
+            Use the schema above to understand the cube, then build a guided
+            preview to read live values without exposing raw query syntax.
+          </p>
+        </div>
+
+        <DataPreviewPanel
+          cubeName={cube.name}
+          key={`${cube.serverName}:${cube.name}:${selectedDimensionName ?? "no-dimension"}`}
+          selectedDimensionName={selectedDimensionName}
+          serverName={cube.serverName}
         />
       </section>
     </div>
