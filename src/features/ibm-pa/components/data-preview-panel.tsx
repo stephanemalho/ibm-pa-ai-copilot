@@ -16,6 +16,7 @@ import {
   dimensionAccessibilityResponseSchema,
   routeErrorSchema,
 } from "@/features/ibm-pa/lib/route-schemas";
+import type { WorkspacePreviewContextSelection } from "@/features/ibm-pa/lib/workspace-state-types";
 import { appRoutes } from "@/shared/lib/routes";
 import type {
   CubeDataPreviewResponse,
@@ -24,6 +25,12 @@ import type {
 
 type DataPreviewPanelProps = {
   cubeName: string;
+  initialContextSelections?: WorkspacePreviewContextSelection[] | undefined;
+  initialRowDimensionName?: string | undefined;
+  onStateChange?: ((value: {
+    previewContextSelections: WorkspacePreviewContextSelection[];
+    previewRowDimensionName?: string | undefined;
+  }) => void) | undefined;
   selectedDimensionName?: string | null | undefined;
   serverName: string;
 };
@@ -63,6 +70,9 @@ const dimensionSampleSize = 12;
 
 const DataPreviewPanel = ({
   cubeName,
+  initialContextSelections,
+  initialRowDimensionName,
+  onStateChange,
   selectedDimensionName,
   serverName,
 }: DataPreviewPanelProps): ReactNode => {
@@ -70,9 +80,17 @@ const DataPreviewPanel = ({
     useState<PreviewDimensionsState>({
       status: "loading",
     });
-  const [rowDimensionName, setRowDimensionName] = useState<string | null>(null);
+  const [rowDimensionName, setRowDimensionName] = useState<string | null>(
+    initialRowDimensionName ?? null,
+  );
   const [filterSelections, setFilterSelections] = useState<FilterSelectionMap>(
-    {},
+    () => {
+      return Object.fromEntries(
+        (initialContextSelections ?? []).map((selection) => {
+          return [selection.dimensionName, selection.memberName];
+        }),
+      );
+    },
   );
   const [previewState, setPreviewState] = useState<PreviewState>({
     status: "idle",
@@ -147,12 +165,14 @@ const DataPreviewPanel = ({
     return getDefaultRowDimensionName(accessibleDimensions, selectedDimensionName);
   }, [accessibleDimensions, selectedDimensionName]);
   const activeRowDimensionName = rowDimensionName ?? defaultRowDimensionName;
-  const filterDimensions = accessibleDimensions.filter(
-    (dimension) =>
-      dimension.name !== activeRowDimensionName && dimension.members.length > 0,
-  );
-  const unconstrainedDimensions =
-    previewDimensionsState.status === "success"
+  const filterDimensions = useMemo(() => {
+    return accessibleDimensions.filter(
+      (dimension) =>
+        dimension.name !== activeRowDimensionName && dimension.members.length > 0,
+    );
+  }, [accessibleDimensions, activeRowDimensionName]);
+  const unconstrainedDimensions = useMemo(() => {
+    return previewDimensionsState.status === "success"
       ? previewDimensionsState.dimensions.filter((dimension) => {
           if (dimension.name === activeRowDimensionName) {
             return false;
@@ -161,25 +181,45 @@ const DataPreviewPanel = ({
           return !dimension.reachable || dimension.members.length === 0;
         })
       : [];
-  const previewFilters = filterDimensions.flatMap((dimension) => {
-    const selectedMember = filterSelections[dimension.name] ?? dimension.members[0];
+  }, [activeRowDimensionName, previewDimensionsState]);
+  const previewFilters = useMemo(() => {
+    return filterDimensions.flatMap((dimension) => {
+      const selectedMember =
+        filterSelections[dimension.name] ?? dimension.members[0];
 
-    if (!selectedMember) {
-      return [];
-    }
+      if (!selectedMember) {
+        return [];
+      }
 
-    return [
-      {
-        dimensionName: dimension.name,
-        ...(dimension.hierarchyName
-          ? {
-              hierarchyName: dimension.hierarchyName,
-            }
-          : {}),
-        memberName: selectedMember,
-      },
-    ];
-  });
+      return [
+        {
+          dimensionName: dimension.name,
+          ...(dimension.hierarchyName
+            ? {
+                hierarchyName: dimension.hierarchyName,
+              }
+            : {}),
+          memberName: selectedMember,
+        },
+      ];
+    });
+  }, [filterDimensions, filterSelections]);
+
+  useEffect(() => {
+    onStateChange?.({
+      previewContextSelections: previewFilters.map((filter) => {
+        return {
+          dimensionName: filter.dimensionName,
+          memberName: filter.memberName,
+        };
+      }),
+      ...(activeRowDimensionName
+        ? {
+            previewRowDimensionName: activeRowDimensionName,
+          }
+        : {}),
+    });
+  }, [activeRowDimensionName, onStateChange, previewFilters]);
 
   const handlePreview = async (): Promise<void> => {
     if (!activeRowDimensionName) {
