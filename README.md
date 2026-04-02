@@ -1,6 +1,6 @@
-# Analytics XPlorer AI Copilot
+# Analytics Copilot Xplorer
 
-Production-minded POC scaffold for an Analytics XPlorer AI Copilot web app built with Next.js App Router, TypeScript, pnpm, Zod, and a minimal shadcn/ui foundation.
+Production-minded POC scaffold for an Analytics Copilot Xplorer web app built with Next.js App Router, TypeScript, pnpm, Zod, and a minimal shadcn/ui foundation.
 
 ## What is included
 

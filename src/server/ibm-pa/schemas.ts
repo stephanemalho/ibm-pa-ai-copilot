@@ -68,4 +68,5 @@ export {
   mdxExecuteResponseSchema,
   rawNamedItemSchema,
   rawServerSchema,
+  unknownRecordSchema,
 };

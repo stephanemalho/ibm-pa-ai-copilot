@@ -30,6 +30,7 @@ import type {
   CubeDimensionsResult,
   CubeSampleMemberSet,
   CubeSampleMembersResult,
+  CubeSummary,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityDiagnosticsResult,
   GetDimensionAccessibilityDiagnosticParams,
@@ -43,6 +44,10 @@ import type {
   MdxCell,
   MdxQueryResult,
   RunMdxParams,
+  Tm1AttributeMap,
+  Tm1HierarchyMetadata,
+  Tm1LocalizedAttributeMap,
+  Tm1Member,
   Tm1ServerAccessibilityDiagnostic,
   Tm1ServerAccessibilityDiagnosticsResult,
   Tm1ServerSummary,
@@ -121,7 +126,7 @@ class IbmPaClient {
     }
 
     const payload = await requestIbmPaJson({
-      path: "/Cubes?$select=Name",
+      path: "/Cubes?$select=Name,Attributes,LastSchemaUpdate,LastDataUpdate&$expand=LocalizedAttributes",
       scope: {
         kind: "tm1",
         serverName,
@@ -130,7 +135,7 @@ class IbmPaClient {
     const items = extractCollectionItems(payload, "cubes");
 
     return {
-      cubes: items.map((item) => normalizeNamedSummary(item, serverName)),
+      cubes: items.map((item) => normalizeCubeSummary(item, serverName)),
       mode: "live",
       serverName,
     };
@@ -178,13 +183,12 @@ class IbmPaClient {
       return {
         cubes: cubesResult.cubes.map((cube) => {
           return {
+            ...cube,
             kind: "cube",
             classification: "accessible",
             message:
               "Mock mode is active, so this cube is treated as accessible for diagnostics.",
-            name: cube.name,
             reachable: true,
-            serverName,
           };
         }),
         mode: "mock",
@@ -196,7 +200,7 @@ class IbmPaClient {
       cubesResult.cubes,
       diagnosticProbeConcurrency,
       async (cube) => {
-        return this.getSingleCubeAccessibilityDiagnostic(serverName, cube.name);
+        return this.getSingleCubeAccessibilityDiagnostic(cube);
       },
     );
 
@@ -236,18 +240,20 @@ class IbmPaClient {
             );
 
             return {
+              ...buildDimensionMetadata(dimension.dimensionName ?? dimension.name),
               kind: "dimension",
               classification: "accessible",
               cubeName: params.cubeName,
+              dimensionName: dimension.dimensionName ?? dimension.name,
               ...(dimension.hierarchyName
                 ? {
+                    hierarchy: buildHierarchyMetadata(dimension.hierarchyName),
                     hierarchyName: dimension.hierarchyName,
                   }
                 : {}),
               members: matchingMembers?.members ?? [],
               message:
                 "Mock mode is active, so this dimension is treated as accessible for diagnostics.",
-              name: dimension.dimensionName,
               reachable: true,
               serverName: params.serverName,
             };
@@ -263,7 +269,7 @@ class IbmPaClient {
       async (dimension) => {
         return this.getSingleDimensionAccessibilityDiagnostic({
           cubeName: params.cubeName,
-          dimensionName: dimension.dimensionName,
+          dimension,
           sampleSize,
           serverName: params.serverName,
         });
@@ -302,7 +308,7 @@ class IbmPaClient {
     }
 
     const payload = await requestIbmPaJson({
-      path: `/Cubes('${escapeODataStringLiteral(params.cubeName)}')/Dimensions?$select=Name`,
+      path: `/Cubes('${escapeODataStringLiteral(params.cubeName)}')/Dimensions?$select=Name,UniqueName,AllLeavesHierarchyName,Attributes&$expand=LocalizedAttributes`,
       scope: {
         kind: "tm1",
         serverName,
@@ -312,11 +318,9 @@ class IbmPaClient {
 
     return {
       dimensions: items.map((item) => {
-        const dimensionName = getRequiredName(item, "cube dimension");
-
         return {
+          ...normalizeDimensionSummary(item),
           cubeName: params.cubeName,
-          dimensionName,
           serverName,
         };
       }),
@@ -345,17 +349,18 @@ class IbmPaClient {
           )
           .map((dimension) => {
             return {
+              ...buildDimensionMetadata(dimension.dimensionName ?? dimension.name),
               kind: "dimension",
               classification: "accessible",
               cubeName: params.cubeName,
               ...(dimension.hierarchyName
                 ? {
+                    hierarchy: buildHierarchyMetadata(dimension.hierarchyName),
                     hierarchyName: dimension.hierarchyName,
                   }
                 : {}),
               message:
                 "Mock mode is active, so this dimension is treated as accessible for structure diagnostics.",
-              name: dimension.dimensionName,
               reachable: true,
               serverName: params.serverName,
             };
@@ -371,7 +376,7 @@ class IbmPaClient {
       async (dimension) => {
         return this.getSingleDimensionStructureDiagnostic({
           cubeName: params.cubeName,
-          dimensionName: dimension.dimensionName,
+          dimension,
           serverName: params.serverName,
         });
       },
@@ -552,38 +557,54 @@ class IbmPaClient {
 
       if (!matchingDimension) {
         return {
+          ...buildDimensionMetadata(params.dimensionName),
           kind: "dimension",
           classification: "server_not_reachable_by_endpoint",
           cubeName: params.cubeName,
+          dimensionName: params.dimensionName,
           members: [],
           message: "The requested dimension was not found in mock mode.",
-          name: params.dimensionName,
           reachable: false,
           serverName,
         };
       }
 
       return {
+        ...buildDimensionMetadata(params.dimensionName),
         kind: "dimension",
         classification: "accessible",
         cubeName: params.cubeName,
+        dimensionName: params.dimensionName,
         ...(matchingDimension.hierarchyName
           ? {
+              hierarchy: buildHierarchyMetadata(matchingDimension.hierarchyName),
               hierarchyName: matchingDimension.hierarchyName,
             }
           : {}),
         members: matchingMembers?.members.slice(0, sampleSize) ?? [],
         message:
           "Mock mode is active, so this dimension is treated as accessible for diagnostics.",
-        name: params.dimensionName,
         reachable: true,
         serverName,
       };
     }
 
+    const dimensionsResult = await this.getCubeDimensions({
+      cubeName: params.cubeName,
+      serverName,
+    });
+    const matchingDimension =
+      dimensionsResult.dimensions.find(
+        (dimension) => dimension.dimensionName === params.dimensionName,
+      ) ?? {
+        ...buildDimensionMetadata(params.dimensionName),
+        cubeName: params.cubeName,
+        serverName,
+      };
+
     return this.getSingleDimensionAccessibilityDiagnostic({
       cubeName: params.cubeName,
-      dimensionName: params.dimensionName,
+      dimension: matchingDimension,
       sampleSize,
       serverName,
     });
@@ -595,34 +616,65 @@ class IbmPaClient {
     sampleSize: number;
     serverName: string;
   }): Promise<CubeSampleMemberSet> {
-    const hierarchyName = await this.getPrimaryHierarchyName(
-      params.dimension.dimensionName,
+    const hierarchy = await this.getPrimaryHierarchyMetadata(
+      params.dimension.dimensionName ?? params.dimension.name,
       params.serverName,
     );
-    const payload = await requestIbmPaJson({
-      path: `/Dimensions('${escapeODataStringLiteral(params.dimension.dimensionName)}')/Hierarchies('${escapeODataStringLiteral(hierarchyName)}')/Elements?$select=Name&$top=${params.sampleSize}`,
-      scope: {
-        kind: "tm1",
-        serverName: params.serverName,
-      },
+    const items = await this.getDimensionSampleMemberItems({
+      dimensionName: params.dimension.dimensionName ?? params.dimension.name,
+      hierarchyName: hierarchy.name,
+      sampleSize: params.sampleSize,
+      serverName: params.serverName,
     });
-    const items = extractCollectionItems(payload, "dimension elements");
 
     return {
       cubeName: params.cubeName,
-      dimensionName: params.dimension.dimensionName,
-      hierarchyName,
-      members: items.map((item) => getRequiredName(item, "dimension element")),
+      dimensionName: params.dimension.dimensionName ?? params.dimension.name,
+      hierarchyName: hierarchy.name,
+      members: items.map((item) => normalizeMember(item)),
       serverName: params.serverName,
     };
   }
 
-  private async getPrimaryHierarchyName(
+  private async getDimensionSampleMemberItems(params: {
+    dimensionName: string;
+    hierarchyName: string;
+    sampleSize: number;
+    serverName: string;
+  }): Promise<Record<string, unknown>[]> {
+    try {
+      const payload = await requestIbmPaJson({
+        path: `/Dimensions('${escapeODataStringLiteral(params.dimensionName)}')/Hierarchies('${escapeODataStringLiteral(params.hierarchyName)}')/Members?$select=Name,UniqueName,Type,Ordinal,IsPlaceholder,Weight,Attributes&$expand=LocalizedAttributes,Element($select=Name,UniqueName,Type,Level,Index,Attributes;$expand=LocalizedAttributes)&$top=${params.sampleSize}`,
+        scope: {
+          kind: "tm1",
+          serverName: params.serverName,
+        },
+      });
+
+      return extractCollectionItems(payload, "dimension members");
+    } catch (error) {
+      if (!isIbmPaError(error) || error.statusCode !== 400) {
+        throw error;
+      }
+
+      const payload = await requestIbmPaJson({
+        path: `/Dimensions('${escapeODataStringLiteral(params.dimensionName)}')/Hierarchies('${escapeODataStringLiteral(params.hierarchyName)}')/Elements?$select=Name,UniqueName,Type,Level,Index,Attributes&$expand=LocalizedAttributes&$top=${params.sampleSize}`,
+        scope: {
+          kind: "tm1",
+          serverName: params.serverName,
+        },
+      });
+
+      return extractCollectionItems(payload, "dimension elements");
+    }
+  }
+
+  private async getPrimaryHierarchyMetadata(
     dimensionName: string,
     serverName: string,
-  ): Promise<string> {
+  ): Promise<Tm1HierarchyMetadata> {
     const payload = await requestIbmPaJson({
-      path: `/Dimensions('${escapeODataStringLiteral(dimensionName)}')/Hierarchies?$select=Name&$top=1`,
+      path: `/Dimensions('${escapeODataStringLiteral(dimensionName)}')/Hierarchies?$select=Name,UniqueName,Cardinality,Structure,Visible,Attributes&$expand=LocalizedAttributes&$top=1`,
       scope: {
         kind: "tm1",
         serverName,
@@ -632,10 +684,10 @@ class IbmPaClient {
     const primaryHierarchy = items[0];
 
     if (!primaryHierarchy) {
-      return dimensionName;
+      return buildHierarchyMetadata(dimensionName);
     }
 
-    return getRequiredName(primaryHierarchy, "dimension hierarchy");
+    return normalizeHierarchyMetadata(primaryHierarchy, dimensionName);
   }
 
   private async getSingleServerAccessibilityDiagnostic(
@@ -659,62 +711,65 @@ class IbmPaClient {
   }
 
   private async getSingleCubeAccessibilityDiagnostic(
-    serverName: string,
-    cubeName: string,
+    cube: CubeSummary,
   ): Promise<CubeAccessibilityDiagnostic> {
     try {
       await this.getCubeDimensions({
-        cubeName,
-        serverName,
+        cubeName: cube.name,
+        serverName: cube.serverName,
       });
 
       return {
+        ...cube,
         kind: "cube",
         classification: "accessible",
         message:
           "The cube responded to a lightweight dimensions metadata query.",
-        name: cubeName,
         reachable: true,
-        serverName,
       };
     } catch (error) {
-      return classifyResourceAccessibilityError({
+      return {
+        ...cube,
+        ...classifyResourceAccessibilityError({
         error,
         kind: "cube",
-        name: cubeName,
-        serverName,
-      });
+          name: cube.name,
+          serverName: cube.serverName,
+        }),
+      };
     }
   }
 
   private async getSingleDimensionStructureDiagnostic(params: {
     cubeName: string;
-    dimensionName: string;
+    dimension: CubeDimension;
     serverName: string;
   }): Promise<CubeDimensionStructureDiagnostic> {
     try {
-      const hierarchyName = await this.getPrimaryHierarchyName(
-        params.dimensionName,
+      const hierarchy = await this.getPrimaryHierarchyMetadata(
+        params.dimension.dimensionName ?? params.dimension.name,
         params.serverName,
       );
 
       return {
+        ...params.dimension,
         kind: "dimension",
         classification: "accessible",
         cubeName: params.cubeName,
-        hierarchyName,
+        hierarchy,
+        hierarchyName: hierarchy.name,
         message:
           "The dimension responded to a lightweight hierarchy metadata query.",
-        name: params.dimensionName,
         reachable: true,
         serverName: params.serverName,
       };
     } catch (error) {
       return {
+        ...params.dimension,
         ...classifyResourceAccessibilityError({
           error,
           kind: "dimension",
-          name: params.dimensionName,
+          name: params.dimension.dimensionName ?? params.dimension.name,
           serverName: params.serverName,
         }),
         cubeName: params.cubeName,
@@ -724,44 +779,42 @@ class IbmPaClient {
 
   private async getSingleDimensionAccessibilityDiagnostic(params: {
     cubeName: string;
-    dimensionName: string;
+    dimension: CubeDimension;
     sampleSize: number;
     serverName: string;
   }): Promise<DimensionAccessibilityDiagnostic> {
     try {
-      const hierarchyName = await this.getPrimaryHierarchyName(
-        params.dimensionName,
+      const hierarchy = await this.getPrimaryHierarchyMetadata(
+        params.dimension.dimensionName ?? params.dimension.name,
         params.serverName,
       );
-      const payload = await requestIbmPaJson({
-        path: `/Dimensions('${escapeODataStringLiteral(params.dimensionName)}')/Hierarchies('${escapeODataStringLiteral(hierarchyName)}')/Elements?$select=Name&$top=${params.sampleSize}`,
-        scope: {
-          kind: "tm1",
-          serverName: params.serverName,
-        },
+      const items = await this.getDimensionSampleMemberItems({
+        dimensionName: params.dimension.dimensionName ?? params.dimension.name,
+        hierarchyName: hierarchy.name,
+        sampleSize: params.sampleSize,
+        serverName: params.serverName,
       });
-      const items = extractCollectionItems(payload, "dimension elements");
 
       return {
+        ...params.dimension,
         kind: "dimension",
         classification: "accessible",
         cubeName: params.cubeName,
-        hierarchyName,
-        members: items.map((item) =>
-          getRequiredName(item, "dimension element"),
-        ),
+        hierarchy,
+        hierarchyName: hierarchy.name,
+        members: items.map((item) => normalizeMember(item)),
         message:
           "The dimension responded to a lightweight members metadata query.",
-        name: params.dimensionName,
         reachable: true,
         serverName: params.serverName,
       };
     } catch (error) {
       return {
+        ...params.dimension,
         ...classifyResourceAccessibilityError({
           error,
           kind: "dimension",
-          name: params.dimensionName,
+          name: params.dimension.dimensionName ?? params.dimension.name,
           serverName: params.serverName,
         }),
         cubeName: params.cubeName,
@@ -879,17 +932,204 @@ const normalizeServer = (item: Record<string, unknown>): Tm1ServerSummary => {
   };
 };
 
-const normalizeNamedSummary = (
+const normalizeCubeSummary = (
   item: Record<string, unknown>,
   serverName: string,
-): {
-  name: string;
-  serverName: string;
-} => {
+): CubeSummary => {
+  const name = getRequiredName(item, "cube");
+
   return {
-    name: getRequiredName(item, "named item"),
+    ...extractMetadataEnvelope(item),
+    lastDataUpdate: getOptionalString(item, ["LastDataUpdate"]),
+    lastSchemaUpdate: getOptionalString(item, ["LastSchemaUpdate"]),
+    name,
     serverName,
+    uniqueName: getOptionalString(item, ["UniqueName"]),
   };
+};
+
+const normalizeDimensionSummary = (
+  item: Record<string, unknown>,
+): Omit<CubeDimension, "cubeName" | "serverName"> => {
+  const name = getRequiredName(item, "dimension");
+
+  return {
+    ...extractMetadataEnvelope(item),
+    allLeavesHierarchyName: getOptionalString(item, ["AllLeavesHierarchyName"]),
+    dimensionName: name,
+    name,
+    uniqueName: getOptionalString(item, ["UniqueName"]),
+  };
+};
+
+const normalizeHierarchyMetadata = (
+  item: Record<string, unknown>,
+  fallbackName: string,
+): Tm1HierarchyMetadata => {
+  const name = getOptionalString(item, ["Name"]) ?? fallbackName;
+
+  return {
+    ...extractMetadataEnvelope(item),
+    cardinality: getOptionalNumber(item, ["Cardinality"]),
+    levelNames: [],
+    name,
+    structure: getOptionalString(item, ["Structure"]),
+    uniqueName: getOptionalString(item, ["UniqueName"]),
+    visible: getOptionalBoolean(item, ["Visible"]),
+  };
+};
+
+const normalizeMember = (item: Record<string, unknown>): Tm1Member => {
+  const element = getOptionalRecord(item, ["Element"]);
+  const name =
+    getOptionalString(item, ["Name"]) ??
+    (element ? getOptionalString(element, ["Name"]) : undefined) ??
+    getRequiredName(item, "member");
+  const metadata = extractMetadataEnvelope(item);
+  const elementMetadata = element
+    ? extractMetadataEnvelope(element)
+    : {
+        attributes: {},
+        caption: undefined,
+        localizedAttributes: [],
+      };
+
+  return {
+    attributes: {
+      ...elementMetadata.attributes,
+      ...metadata.attributes,
+    },
+    caption: metadata.caption ?? elementMetadata.caption,
+    index:
+      getOptionalNumber(item, ["Index"]) ??
+      (element ? getOptionalNumber(element, ["Index"]) : undefined),
+    isPlaceholder: getOptionalBoolean(item, ["IsPlaceholder"]),
+    level:
+      getOptionalNumber(item, ["Level"]) ??
+      (element ? getOptionalNumber(element, ["Level"]) : undefined),
+    localizedAttributes: [
+      ...elementMetadata.localizedAttributes,
+      ...metadata.localizedAttributes,
+    ],
+    name,
+    ordinal: getOptionalNumber(item, ["Ordinal"]),
+    type:
+      getOptionalString(item, ["Type"]) ??
+      (element ? getOptionalString(element, ["Type"]) : undefined),
+    uniqueName:
+      getOptionalString(item, ["UniqueName"]) ??
+      (element ? getOptionalString(element, ["UniqueName"]) : undefined),
+    weight: getOptionalNumber(item, ["Weight"]),
+  };
+};
+
+const buildDimensionMetadata = (
+  dimensionName: string,
+): Pick<
+  CubeDimension,
+  | "attributes"
+  | "caption"
+  | "dimensionName"
+  | "localizedAttributes"
+  | "name"
+  | "uniqueName"
+> => {
+  return {
+    attributes: {},
+    caption: undefined,
+    dimensionName,
+    localizedAttributes: [],
+    name: dimensionName,
+    uniqueName: undefined,
+  };
+};
+
+const buildHierarchyMetadata = (
+  hierarchyName: string,
+): Tm1HierarchyMetadata => {
+  return {
+    attributes: {},
+    levelNames: [],
+    localizedAttributes: [],
+    name: hierarchyName,
+  };
+};
+
+const extractMetadataEnvelope = (
+  item: Record<string, unknown>,
+): {
+  attributes: Tm1AttributeMap;
+  caption?: string | undefined;
+  localizedAttributes: Tm1LocalizedAttributeMap;
+} => {
+  const attributes = extractAttributeMap(item["Attributes"]);
+  const localizedAttributes = extractLocalizedAttributeMapCollection(
+    item["LocalizedAttributes"],
+  );
+
+  return {
+    attributes,
+    caption:
+      extractCaptionFromAttributeMap(attributes) ??
+      extractCaptionFromLocalizedAttributes(localizedAttributes),
+    localizedAttributes,
+  };
+};
+
+const extractAttributeMap = (value: unknown): Tm1AttributeMap => {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([attributeName, attributeValue]) => {
+      if (typeof attributeValue === "string") {
+        return [[attributeName, attributeValue]];
+      }
+
+      return [];
+    }),
+  );
+};
+
+const extractLocalizedAttributeMapCollection = (
+  value: unknown,
+): Tm1LocalizedAttributeMap => {
+  if (Array.isArray(value)) {
+    return value
+      .filter(isRecord)
+      .map((entry) => extractAttributeMap(entry));
+  }
+
+  if (isRecord(value) && Array.isArray(value.value)) {
+    return value.value.filter(isRecord).map((entry) => extractAttributeMap(entry));
+  }
+
+  return [];
+};
+
+const extractCaptionFromLocalizedAttributes = (
+  localizedAttributes: Tm1LocalizedAttributeMap,
+): string | undefined => {
+  for (const localizedAttributesEntry of localizedAttributes) {
+    const caption = extractCaptionFromAttributeMap(localizedAttributesEntry);
+
+    if (caption) {
+      return caption;
+    }
+  }
+
+  return undefined;
+};
+
+const extractCaptionFromAttributeMap = (
+  attributes: Tm1AttributeMap,
+): string | undefined => {
+  const captionEntry = Object.entries(attributes).find(([attributeName]) => {
+    return attributeName.toLowerCase() === "caption";
+  });
+
+  return captionEntry?.[1];
 };
 
 const getRequiredName = (
@@ -920,6 +1160,70 @@ const getRequiredName = (
   }
 
   return resolvedName;
+};
+
+const getOptionalString = (
+  item: Record<string, unknown>,
+  keys: string[],
+): string | undefined => {
+  for (const key of keys) {
+    const value = item[key];
+
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const getOptionalNumber = (
+  item: Record<string, unknown>,
+  keys: string[],
+): number | undefined => {
+  for (const key of keys) {
+    const value = item[key];
+
+    if (typeof value === "number") {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const getOptionalBoolean = (
+  item: Record<string, unknown>,
+  keys: string[],
+): boolean | undefined => {
+  for (const key of keys) {
+    const value = item[key];
+
+    if (typeof value === "boolean") {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const getOptionalRecord = (
+  item: Record<string, unknown>,
+  keys: string[],
+): Record<string, unknown> | undefined => {
+  for (const key of keys) {
+    const value = item[key];
+
+    if (isRecord(value)) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 };
 
 const escapeODataStringLiteral = (value: string): string => {
