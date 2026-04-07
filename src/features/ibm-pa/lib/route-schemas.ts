@@ -115,11 +115,28 @@ const cubeDataPreviewFilterSchema = z.object({
   memberName: z.string(),
 });
 
+const cubeComparatorFilterSchema = z.object({
+  dimensionName: z.string(),
+  hierarchyName: z.string().optional(),
+  memberName: z.string(),
+});
+
 const cubeDataPreviewRowSchema = z.object({
   formattedValue: z.string().nullable().optional(),
   memberName: z.string(),
   uniqueName: z.string().optional(),
   value: z.union([z.boolean(), z.null(), z.number(), z.string()]),
+});
+
+const cubeComparatorRowSchema = z.object({
+  baseFormattedValue: z.string().nullable().optional(),
+  baseValue: z.union([z.boolean(), z.null(), z.number(), z.string()]),
+  compareFormattedValue: z.string().nullable().optional(),
+  compareValue: z.union([z.boolean(), z.null(), z.number(), z.string()]),
+  deltaValue: z.number().nullable(),
+  rowMemberName: z.string(),
+  rowUniqueName: z.string().optional(),
+  variancePercentage: z.number().nullable(),
 });
 
 const cubeDimensionsResponseSchema = z.object({
@@ -209,6 +226,18 @@ const cubeDataPreviewResponseSchema = z.object({
   serverName: z.string(),
 });
 
+const cubeComparatorResponseSchema = z.object({
+  baseMemberName: z.string(),
+  compareMemberName: z.string(),
+  comparisonDimensionName: z.string(),
+  contextFilters: z.array(cubeComparatorFilterSchema),
+  cubeName: z.string(),
+  mode: z.enum(["live", "mock"]),
+  rowDimensionName: z.string(),
+  rows: z.array(cubeComparatorRowSchema),
+  serverName: z.string(),
+});
+
 const routeErrorSchema = z.object({
   error: z.object({
     code: z.string(),
@@ -218,6 +247,7 @@ const routeErrorSchema = z.object({
 
 export {
   cubeAccessibilityResponseSchema,
+  cubeComparatorResponseSchema,
   cubeDataPreviewResponseSchema,
   cubeDimensionsResponseSchema,
   cubeDimensionStructureResponseSchema,

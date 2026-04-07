@@ -3,6 +3,8 @@ type WorkspacePreviewContextSelection = {
   memberName: string;
 };
 
+type WorkspaceComparatorContextSelection = WorkspacePreviewContextSelection;
+
 type FavoriteCube = {
   cubeName: string;
   favoritedAt: string;
@@ -30,5 +32,6 @@ export type {
   FavoriteCube,
   RecentCube,
   SavedView,
+  WorkspaceComparatorContextSelection,
   WorkspacePreviewContextSelection,
 };

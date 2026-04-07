@@ -13,6 +13,7 @@ const appRoutes = {
   ibmDimensionAccess: "/api/ibm/dimensions/access",
   ibmDimensionDetail: "/api/ibm/dimensions/detail",
   ibmDataPreview: "/api/ibm/data-preview",
+  ibmComparator: "/api/ibm/comparator",
 } as const;
 
 const getServerRoute = (serverName: string): string => {

@@ -10,6 +10,11 @@ const previewContextSelectionSchema = z.object({
 
 type CubeWorkspaceHrefParams = {
   businessFlowId?: string | undefined;
+  comparatorBaseMemberName?: string | undefined;
+  comparatorCompareMemberName?: string | undefined;
+  comparatorComparisonDimensionName?: string | undefined;
+  comparatorContextSelections?: WorkspacePreviewContextSelection[] | undefined;
+  comparatorRowDimensionName?: string | undefined;
   cubeName: string;
   fromSearch?: string | undefined;
   previewContextSelections?: WorkspacePreviewContextSelection[] | undefined;
@@ -38,6 +43,22 @@ const getCubeWorkspaceHref = (params: CubeWorkspaceHrefParams): string => {
     search.set("previewRow", params.previewRowDimensionName);
   }
 
+  if (params.comparatorRowDimensionName) {
+    search.set("compareRow", params.comparatorRowDimensionName);
+  }
+
+  if (params.comparatorComparisonDimensionName) {
+    search.set("compareDimension", params.comparatorComparisonDimensionName);
+  }
+
+  if (params.comparatorBaseMemberName) {
+    search.set("compareBase", params.comparatorBaseMemberName);
+  }
+
+  if (params.comparatorCompareMemberName) {
+    search.set("compareTarget", params.comparatorCompareMemberName);
+  }
+
   if (
     params.previewContextSelections &&
     params.previewContextSelections.length > 0
@@ -45,6 +66,16 @@ const getCubeWorkspaceHref = (params: CubeWorkspaceHrefParams): string => {
     search.set(
       "previewContext",
       JSON.stringify(params.previewContextSelections),
+    );
+  }
+
+  if (
+    params.comparatorContextSelections &&
+    params.comparatorContextSelections.length > 0
+  ) {
+    search.set(
+      "compareContext",
+      JSON.stringify(params.comparatorContextSelections),
     );
   }
 
