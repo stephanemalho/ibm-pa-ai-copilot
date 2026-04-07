@@ -8,7 +8,10 @@ const previewContextSelectionSchema = z.object({
   memberName: z.string().trim().min(1),
 });
 
+type CubeWorkspaceAnalysisPanel = "preview" | "compare";
+
 type CubeWorkspaceHrefParams = {
+  analysisPanel?: CubeWorkspaceAnalysisPanel | undefined;
   businessFlowId?: string | undefined;
   comparatorBaseMemberName?: string | undefined;
   comparatorCompareMemberName?: string | undefined;
@@ -29,6 +32,10 @@ const getCubeWorkspaceHref = (params: CubeWorkspaceHrefParams): string => {
 
   if (params.selectedDimensionName) {
     search.set("dimension", params.selectedDimensionName);
+  }
+
+  if (params.analysisPanel) {
+    search.set("panel", params.analysisPanel);
   }
 
   if (params.businessFlowId) {
@@ -111,4 +118,8 @@ const parsePreviewContextSelections = (
   }
 };
 
-export { getCubeWorkspaceHref, parsePreviewContextSelections };
+export {
+  getCubeWorkspaceHref,
+  parsePreviewContextSelections,
+  type CubeWorkspaceAnalysisPanel,
+};
