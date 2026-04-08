@@ -497,15 +497,18 @@ const ComparatorPanel = ({
                 label="Fixed context selectors"
                 value={contextDimensions.length.toString()}
               />
-              <SummaryChip
-                label="Comparison focus"
-                value={
-                  comparisonDimension
-                    ? getDimensionSemanticDescriptor(comparisonDimension)
-                        .semanticKind
-                    : "N/A"
-                }
-              />
+              {comparisonDimension ? (
+                <SummaryChip
+                  label="Focus hint"
+                  value={
+                    getDimensionSemanticDescriptor(comparisonDimension)
+                      .semanticKind === "Unknown"
+                      ? "General"
+                      : getDimensionSemanticDescriptor(comparisonDimension)
+                          .semanticKind
+                  }
+                />
+              ) : null}
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
@@ -578,6 +581,13 @@ const ComparatorPanel = ({
                       status: "idle",
                     });
                   }}
+                  onSwapMembers={() => {
+                    setBaseMemberName(effectiveCompareMemberName);
+                    setCompareMemberName(effectiveBaseMemberName);
+                    setResultState({
+                      status: "idle",
+                    });
+                  }}
                   rowDimensionName={effectiveRowDimensionName}
                   selectedBaseMemberName={effectiveBaseMemberName}
                   selectedCompareMemberName={effectiveCompareMemberName}
@@ -590,9 +600,9 @@ const ComparatorPanel = ({
                     Comparison guidance
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Choose a row dimension that users will scan vertically, then
-                    pick one business dimension for A versus B. Keep the other
-                    dimensions fixed to preserve a clean comparison story.
+                    Use rows for the business list people will review line by
+                    line, then compare two members from one meaningful
+                    dimension while the remaining dimensions stay fixed.
                   </p>
                 </div>
               </div>

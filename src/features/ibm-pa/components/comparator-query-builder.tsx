@@ -18,12 +18,13 @@ type ComparatorQueryBuilderProps = {
   contextDimensions: DimensionAccessibilityDiagnostic[];
   contextSelections: Record<string, string>;
   isLoading: boolean;
-  onCompare: () => void;
-  onContextSelectionChange: (dimensionName: string, memberName: string) => void;
   onBaseMemberChange: (memberName: string) => void;
+  onCompare: () => void;
   onCompareMemberChange: (memberName: string) => void;
   onComparisonDimensionChange: (dimensionName: string) => void;
+  onContextSelectionChange: (dimensionName: string, memberName: string) => void;
   onRowDimensionChange: (dimensionName: string) => void;
+  onSwapMembers: () => void;
   rowDimensionName: string | null;
   selectedBaseMemberName: string;
   selectedCompareMemberName: string;
@@ -38,12 +39,13 @@ const ComparatorQueryBuilder = ({
   contextDimensions,
   contextSelections,
   isLoading,
-  onCompare,
-  onContextSelectionChange,
   onBaseMemberChange,
+  onCompare,
   onCompareMemberChange,
   onComparisonDimensionChange,
+  onContextSelectionChange,
   onRowDimensionChange,
+  onSwapMembers,
   rowDimensionName,
   selectedBaseMemberName,
   selectedCompareMemberName,
@@ -57,8 +59,9 @@ const ComparatorQueryBuilder = ({
           Guided comparator
         </p>
         <p className="text-sm leading-6 text-slate-600">
-          Choose a row axis, a comparison dimension, and two members to compare
-          while keeping the remaining dimensions fixed as business context.
+          Put the business list you want to scan on rows, choose one dimension
+          to compare A versus B, then keep the remaining dimensions fixed as
+          context.
         </p>
       </div>
 
@@ -95,19 +98,40 @@ const ComparatorQueryBuilder = ({
       </div>
 
       {comparisonDimension ? (
-        <div className="mt-4 grid gap-4 xl:grid-cols-2">
-          <CompareMemberSelector
-            label="Base value (A)"
-            members={comparisonDimension.members}
-            onChange={onBaseMemberChange}
-            value={selectedBaseMemberName}
-          />
-          <CompareMemberSelector
-            label="Compare value (B)"
-            members={comparisonDimension.members}
-            onChange={onCompareMemberChange}
-            value={selectedCompareMemberName}
-          />
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] xl:items-end">
+            <CompareMemberSelector
+              label="Base value (A)"
+              members={comparisonDimension.members}
+              onChange={onBaseMemberChange}
+              value={selectedBaseMemberName}
+            />
+            <div className="flex justify-center xl:pb-1">
+              <Button
+                disabled={
+                  !selectedBaseMemberName ||
+                  !selectedCompareMemberName ||
+                  isLoading
+                }
+                onClick={onSwapMembers}
+                type="button"
+                variant="ghost"
+              >
+                Swap A / B
+              </Button>
+            </div>
+            <CompareMemberSelector
+              label="Compare value (B)"
+              members={comparisonDimension.members}
+              onChange={onCompareMemberChange}
+              value={selectedCompareMemberName}
+            />
+          </div>
+
+          <div className="rounded-[1.25rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+            The row dimension defines the lines of the result table. The
+            comparison dimension defines the two members being contrasted.
+          </div>
         </div>
       ) : null}
 
@@ -166,7 +190,7 @@ const ComparatorQueryBuilder = ({
                   },
                 ).displayLabel}
               </span>{" "}
-              vs{" "}
+              against{" "}
               <span className="font-medium text-slate-950">
                 {getMemberSemanticDescriptor(
                   comparisonDimension.members.find(
