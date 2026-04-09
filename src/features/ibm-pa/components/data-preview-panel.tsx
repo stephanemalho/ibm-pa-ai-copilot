@@ -10,6 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { InsightCards } from "@/features/ibm-pa/components/insight-cards";
+import {
+  formatCount,
+  formatMeasureValue,
+} from "@/features/ibm-pa/lib/analysis-formatting";
+import { derivePreviewInsights } from "@/features/ibm-pa/lib/analysis-insights";
 import { Select } from "@/components/ui/select";
 import {
   cubeDataPreviewResponseSchema,
@@ -525,14 +531,21 @@ const renderPreviewResult = (params: {
       <div className="flex flex-wrap gap-3">
         <SummaryChip
           label="Returned rows"
-          value={params.previewState.data.rows.length.toString()}
+          value={formatCount(params.previewState.data.rows.length)}
         />
         <SummaryChip
           label="Applied filters"
-          value={params.previewState.data.filters.length.toString()}
+          value={formatCount(params.previewState.data.filters.length)}
         />
         <SummaryChip label="Mode" value={params.previewState.data.mode} />
       </div>
+
+      <InsightCards
+        emptyDescription="No preview insights available for this result."
+        emptyTitle="No preview insights"
+        insights={derivePreviewInsights(params.previewState.data)}
+        title="Preview insights"
+      />
 
       <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white">
         <div className="overflow-x-auto">
@@ -542,7 +555,7 @@ const renderPreviewResult = (params: {
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">
                   {getDimensionSemanticDescriptor({ name: params.rowDimensionName }).displayLabel}
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                <th className="px-4 py-3 text-right font-semibold text-slate-700">
                   Value
                 </th>
               </tr>
@@ -563,8 +576,8 @@ const renderPreviewResult = (params: {
                       ) : null}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {row.formattedValue ?? String(row.value)}
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                    {formatMeasureValue(row.formattedValue, row.value)}
                   </td>
                 </tr>
               ))}
@@ -583,7 +596,7 @@ const renderPreviewResult = (params: {
                 key={`${filter.dimensionName}-${filter.memberName}`}
               >
                 {getDimensionSemanticDescriptor({ name: filter.dimensionName }).displayLabel}:{" "}
-                {filter.memberName}
+                {getMemberSemanticDescriptor({ name: filter.memberName }).displayLabel}
               </span>
             ))}
           </div>
