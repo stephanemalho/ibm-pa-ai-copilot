@@ -143,6 +143,48 @@ type CubeDataPreviewResponse = {
   serverName: string;
 };
 
+type CubeComparatorFilter = {
+  dimensionName: string;
+  hierarchyName?: string | undefined;
+  memberName: string;
+};
+
+type CubeComparatorRequest = {
+  baseMemberName: string;
+  compareMemberName: string;
+  comparisonDimensionHierarchyName?: string | undefined;
+  comparisonDimensionName: string;
+  contextFilters: CubeComparatorFilter[];
+  cubeName: string;
+  rowDimensionHierarchyName?: string | undefined;
+  rowDimensionName: string;
+  rowLimit?: number | undefined;
+  serverName?: string | undefined;
+};
+
+type CubeComparatorRow = {
+  baseFormattedValue?: string | null | undefined;
+  baseValue: boolean | null | number | string;
+  compareFormattedValue?: string | null | undefined;
+  compareValue: boolean | null | number | string;
+  deltaValue: number | null;
+  rowMemberName: string;
+  rowUniqueName?: string | undefined;
+  variancePercentage: number | null;
+};
+
+type CubeComparatorResponse = {
+  baseMemberName: string;
+  compareMemberName: string;
+  comparisonDimensionName: string;
+  contextFilters: CubeComparatorFilter[];
+  cubeName: string;
+  mode: IbmPaMode;
+  rowDimensionName: string;
+  rows: CubeComparatorRow[];
+  serverName: string;
+};
+
 type DimensionAccessibilityDiagnostic = DimensionSemanticMetadata & {
   kind: AccessResourceKind;
   classification: ServerAccessibilityClassification;
@@ -205,6 +247,10 @@ export type {
   CubeDataPreviewRequest,
   CubeDataPreviewResponse,
   CubeDataPreviewRow,
+  CubeComparatorFilter,
+  CubeComparatorRequest,
+  CubeComparatorResponse,
+  CubeComparatorRow,
   CubeDimension,
   CubeDimensionsResponse,
   CubeDimensionStructureDiagnostic,

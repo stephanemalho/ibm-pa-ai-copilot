@@ -121,6 +121,7 @@ const SavedViewsPanel = ({
                 <Link
                   className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   href={getCubeWorkspaceHref({
+                    analysisPanel: "preview",
                     cubeName: savedView.cubeName,
                     previewContextSelections: savedView.previewContextSelections,
                     ...(savedView.previewRowDimensionName

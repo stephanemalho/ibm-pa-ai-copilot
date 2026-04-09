@@ -4,6 +4,9 @@ import type {
   AccessResourceKind,
   CubeAccessibilityResponse,
   CubeAccessibilityDiagnostic,
+  CubeComparatorFilter,
+  CubeComparatorResponse as SharedCubeComparatorResponse,
+  CubeComparatorRow,
   CubeDataPreviewFilter,
   CubeDataPreviewResponse as SharedCubeDataPreviewResponse,
   CubeDataPreviewRow,
@@ -146,6 +149,8 @@ type CubeSampleMembersResult = {
 
 type CubeDataPreviewResult = SharedCubeDataPreviewResponse;
 
+type CubeComparatorResult = SharedCubeComparatorResponse;
+
 type RunMdxParams = {
   cubeName?: string;
   mdx: string;
@@ -164,6 +169,19 @@ type GetCubeSampleMembersParams = GetCubeDimensionsParams & {
 type GetCubeDataPreviewParams = {
   cubeName: string;
   filters: CubeDataPreviewFilter[];
+  rowDimensionHierarchyName?: string;
+  rowDimensionName: string;
+  rowLimit?: number;
+  serverName?: string;
+};
+
+type GetCubeComparatorParams = {
+  baseMemberName: string;
+  compareMemberName: string;
+  comparisonDimensionHierarchyName?: string;
+  comparisonDimensionName: string;
+  contextFilters: CubeComparatorFilter[];
+  cubeName: string;
   rowDimensionHierarchyName?: string;
   rowDimensionName: string;
   rowLimit?: number;
@@ -207,6 +225,9 @@ export type {
   CubeAccessibilityResponse,
   CubeAccessibilityDiagnostic,
   CubeAccessibilityDiagnosticsResult,
+  CubeComparatorFilter,
+  CubeComparatorResult,
+  CubeComparatorRow,
   CubeDataPreviewFilter,
   CubeDataPreviewResult,
   CubeDataPreviewRow,
@@ -221,6 +242,7 @@ export type {
   DimensionAccessibilityDiagnosticsResult,
   DimensionSemanticMetadata,
   GetCubeDataPreviewParams,
+  GetCubeComparatorParams,
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
   GetDimensionAccessibilityDiagnosticParams,
