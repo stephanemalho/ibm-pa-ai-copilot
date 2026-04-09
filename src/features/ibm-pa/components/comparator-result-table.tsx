@@ -2,6 +2,18 @@
 
 import { useMemo, type ReactNode } from "react";
 
+import { InsightCards } from "@/features/ibm-pa/components/insight-cards";
+import {
+  formatCount,
+  formatMeasureValue,
+  formatSignedNumber,
+  formatVariance,
+  getInsightTone,
+  getNumericComparatorRows,
+} from "@/features/ibm-pa/lib/analysis-formatting";
+import {
+  deriveComparatorInsights,
+} from "@/features/ibm-pa/lib/analysis-insights";
 import {
   getDimensionSemanticDescriptor,
   getMemberSemanticDescriptor,
@@ -36,6 +48,9 @@ const ComparatorResultTable = ({
   const summary = useMemo(() => {
     return getComparisonSummary(result.rows);
   }, [result.rows]);
+  const insights = useMemo(() => {
+    return deriveComparatorInsights(result);
+  }, [result]);
 
   if (result.rows.length === 0) {
     return (
@@ -61,13 +76,13 @@ const ComparatorResultTable = ({
         />
         <SummaryCard
           label="Net delta"
-          tone={getDeltaTone(summary.netDelta).textClassName}
+          tone={getToneTextClassName(getInsightTone(summary.netDelta))}
           value={formatSignedNumber(summary.netDelta)}
-          supporting={`${summary.comparableRowCount}/${result.rows.length} comparable rows`}
+          supporting={`${formatCount(summary.comparableRowCount)} of ${formatCount(result.rows.length)} rows comparable`}
         />
         <SummaryCard
           label="Net variance"
-          tone={getDeltaTone(summary.netDelta).textClassName}
+          tone={getToneTextClassName(getInsightTone(summary.netVariancePercentage))}
           value={formatVariance(summary.netVariancePercentage)}
           supporting={
             summary.totalBaseValue === null || summary.totalCompareValue === null
@@ -77,12 +92,19 @@ const ComparatorResultTable = ({
         />
       </div>
 
+      <InsightCards
+        emptyDescription="No comparison insights available for this result."
+        emptyTitle="No comparison insights"
+        insights={insights}
+        title="Comparison insights"
+      />
+
       <div className="flex flex-wrap gap-3">
-        <SummaryChip label="Rows" value={result.rows.length.toString()} />
+        <SummaryChip label="Rows" value={formatCount(result.rows.length)} />
         <SummaryChip label="Mode" value={result.mode} />
         <SummaryChip
           label="Context filters"
-          value={result.contextFilters.length.toString()}
+          value={formatCount(result.contextFilters.length)}
         />
       </div>
 
@@ -93,17 +115,17 @@ const ComparatorResultTable = ({
               <tr>
                 <HeaderCell
                   subtitle={result.rowDimensionName}
-                  title={`Row — ${rowDimensionLabel}`}
+                  title={`Row - ${rowDimensionLabel}`}
                 />
                 <HeaderCell
                   align="right"
                   subtitle={result.baseMemberName}
-                  title={`Base (A) — ${baseMemberLabel}`}
+                  title={`Base (A) - ${baseMemberLabel}`}
                 />
                 <HeaderCell
                   align="right"
                   subtitle={result.compareMemberName}
-                  title={`Compare (B) — ${compareMemberLabel}`}
+                  title={`Compare (B) - ${compareMemberLabel}`}
                 />
                 <HeaderCell align="right" title="Delta" />
                 <HeaderCell align="right" title="Variance %" />
@@ -111,8 +133,8 @@ const ComparatorResultTable = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {result.rows.map((row) => {
-                const deltaTone = getDeltaTone(row.deltaValue);
-                const varianceTone = getDeltaTone(getVarianceToneValue(row));
+                const deltaTone = getInsightTone(row.deltaValue);
+                const varianceTone = getInsightTone(row.variancePercentage);
                 const emphasize =
                   row.variancePercentage !== null &&
                   Math.abs(row.variancePercentage) >= 10;
@@ -125,7 +147,9 @@ const ComparatorResultTable = ({
                     <BodyCell>
                       <div className="space-y-1">
                         <p className="font-medium text-slate-900">
-                          {row.rowMemberName}
+                          {getMemberSemanticDescriptor({
+                            name: row.rowMemberName,
+                          }).displayLabel}
                         </p>
                         {row.rowUniqueName ? (
                           <p className="text-xs text-slate-500">{row.rowUniqueName}</p>
@@ -145,7 +169,7 @@ const ComparatorResultTable = ({
                       <span
                         className={cn(
                           "inline-flex min-w-24 justify-end rounded-full px-3 py-1 font-medium tabular-nums",
-                          deltaTone.badgeClassName,
+                          getToneBadgeClassName(deltaTone),
                           emphasize ? "ring-2 ring-current/10" : "",
                         )}
                       >
@@ -156,7 +180,7 @@ const ComparatorResultTable = ({
                       <span
                         className={cn(
                           "inline-flex min-w-24 justify-end rounded-full px-3 py-1 font-medium tabular-nums",
-                          varianceTone.badgeClassName,
+                          getToneBadgeClassName(varianceTone),
                           emphasize ? "ring-2 ring-current/10" : "",
                         )}
                       >
@@ -295,12 +319,7 @@ const EmptyState = ({
 };
 
 const getComparisonSummary = (rows: CubeComparatorRow[]): ComparisonSummary => {
-  const comparableRows = rows.filter((row) => {
-    return (
-      getNumericValue(row.baseValue) !== null &&
-      getNumericValue(row.compareValue) !== null
-    );
-  });
+  const comparableRows = getNumericComparatorRows(rows);
 
   if (comparableRows.length !== rows.length || comparableRows.length === 0) {
     return {
@@ -313,10 +332,10 @@ const getComparisonSummary = (rows: CubeComparatorRow[]): ComparisonSummary => {
   }
 
   const totalBaseValue = comparableRows.reduce((total, row) => {
-    return total + (getNumericValue(row.baseValue) ?? 0);
+    return total + row.baseNumericValue;
   }, 0);
   const totalCompareValue = comparableRows.reduce((total, row) => {
-    return total + (getNumericValue(row.compareValue) ?? 0);
+    return total + row.compareNumericValue;
   }, 0);
   const netDelta = totalCompareValue - totalBaseValue;
   const netVariancePercentage =
@@ -331,127 +350,30 @@ const getComparisonSummary = (rows: CubeComparatorRow[]): ComparisonSummary => {
   };
 };
 
-const formatMeasureValue = (
-  formattedValue: string | null | undefined,
-  rawValue: boolean | null | number | string,
+const getToneBadgeClassName = (
+  tone: "negative" | "neutral" | "positive",
 ): string => {
-  const numericValue = getNumericValue(rawValue);
-
-  if (numericValue !== null) {
-    if (
-      typeof formattedValue === "string" &&
-      formattedValue.trim().length > 0 &&
-      /[%$€£¥]/.test(formattedValue)
-    ) {
-      return formattedValue;
-    }
-
-    return formatNumber(numericValue);
+  switch (tone) {
+    case "positive":
+      return "bg-emerald-50 text-emerald-800";
+    case "negative":
+      return "bg-rose-50 text-rose-800";
+    default:
+      return "bg-slate-100 text-slate-700";
   }
-
-  if (formattedValue && formattedValue.trim().length > 0) {
-    return formattedValue;
-  }
-
-  if (rawValue === null) {
-    return "—";
-  }
-
-  return String(rawValue);
 };
 
-const formatSignedNumber = (value: number | null): string => {
-  if (value === null) {
-    return "—";
-  }
-
-  return formatNumber(value, {
-    signDisplay: "exceptZero",
-  });
-};
-
-const formatVariance = (value: number | null): string => {
-  if (value === null || !Number.isFinite(value)) {
-    return "—";
-  }
-
-  return `${formatNumber(value, {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 0,
-    signDisplay: "exceptZero",
-  })}%`;
-};
-
-const formatNumber = (
-  value: number,
-  overrides?: Intl.NumberFormatOptions | undefined,
+const getToneTextClassName = (
+  tone: "negative" | "neutral" | "positive",
 ): string => {
-  const absoluteValue = Math.abs(value);
-  const minimumFractionDigits =
-    absoluteValue !== 0 && absoluteValue < 1 ? 2 : 0;
-  const maximumFractionDigits =
-    absoluteValue !== 0 && absoluteValue < 1 ? 4 : 2;
-
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits,
-    minimumFractionDigits,
-    ...overrides,
-  }).format(value);
-};
-
-const getNumericValue = (value: boolean | null | number | string): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
+  switch (tone) {
+    case "positive":
+      return "text-emerald-900";
+    case "negative":
+      return "text-rose-900";
+    default:
+      return "text-slate-950";
   }
-
-  if (typeof value === "string" && value.trim().length > 0) {
-    const normalizedValue = value.replaceAll(",", "");
-    const parsedValue = Number(normalizedValue);
-
-    if (Number.isFinite(parsedValue)) {
-      return parsedValue;
-    }
-  }
-
-  return null;
-};
-
-const getVarianceToneValue = (row: CubeComparatorRow): number | null => {
-  if (row.variancePercentage === null || !Number.isFinite(row.variancePercentage)) {
-    return null;
-  }
-
-  if (Math.abs(row.variancePercentage) < 0.001) {
-    return 0;
-  }
-
-  return row.variancePercentage;
-};
-
-const getDeltaTone = (
-  deltaValue: number | null,
-): {
-  badgeClassName: string;
-  textClassName: string;
-} => {
-  if (deltaValue === null || Math.abs(deltaValue) < 0.001) {
-    return {
-      badgeClassName: "bg-slate-100 text-slate-700",
-      textClassName: "text-slate-950",
-    };
-  }
-
-  if (deltaValue > 0) {
-    return {
-      badgeClassName: "bg-emerald-50 text-emerald-800",
-      textClassName: "text-emerald-900",
-    };
-  }
-
-  return {
-    badgeClassName: "bg-rose-50 text-rose-800",
-    textClassName: "text-rose-900",
-  };
 };
 
 export { ComparatorResultTable };
