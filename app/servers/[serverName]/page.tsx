@@ -3,13 +3,14 @@ import type { ReactNode } from "react";
 
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
 import { CubeExplorer } from "@/features/ibm-pa/components/cube-explorer";
+import { ResourceHealthPanel } from "@/features/ibm-pa/components/resource-health-panel";
+import { deriveServerDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
 import {
   getCubeAccessibilityDiagnostics,
   getServerAccessibilityDiagnostics,
@@ -56,6 +57,10 @@ const ServerPage = async ({
   const accessibleCubeCount = cubeDiagnostics.cubes.filter(
     (cube) => cube.reachable,
   ).length;
+  const serverDiagnosticsSummary = deriveServerDiagnostics(
+    server,
+    cubeDiagnostics.cubes,
+  );
 
   return (
     <div className="space-y-8">
@@ -82,28 +87,35 @@ const ServerPage = async ({
           </div>
         </div>
 
-        <Card className="border-slate-200/80 bg-slate-950 text-slate-50">
-          <CardHeader>
-            <CardTitle>Server summary</CardTitle>
-            <CardDescription className="text-slate-300">
-              Metadata exploration remains read-only and uses the existing IBM
-              routes and server-side session flow.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-slate-200">
-            <p>Reachable: {server.reachable ? "Yes" : "No"}</p>
-            <p>
-              Status code:{" "}
-              {server.statusCode?.toString() ??
-                (server.reachable ? "Connecte" : "N/A")}
-            </p>
-            <p>Cubes discovered: {cubeDiagnostics.cubes.length}</p>
-            <p>Accessible cubes: {accessibleCubeCount}</p>
-            <p className="text-slate-300/90">
-              Connection note: {server.message}
-            </p>
-          </CardContent>
-        </Card>
+        <ResourceHealthPanel
+          badges={[
+            serverDiagnosticsSummary.accessStatus,
+            serverDiagnosticsSummary.usabilityStatus,
+            serverDiagnosticsSummary.semanticCoverageStatus,
+          ]}
+          description={serverDiagnosticsSummary.summaryMessage}
+          metrics={[
+            {
+              detail: server.message,
+              label: "Access status",
+              value: serverDiagnosticsSummary.accessStatus.label,
+            },
+            {
+              label: "Visible cubes",
+              value: serverDiagnosticsSummary.visibleCubeCount.toString(),
+            },
+            {
+              label: "Accessible cubes",
+              value: accessibleCubeCount.toString(),
+            },
+            {
+              detail: "Visible-only or weakly enriched cubes worth consultant review",
+              label: "Needs attention",
+              value: serverDiagnosticsSummary.limitedCubeCount.toString(),
+            },
+          ]}
+          title="Server diagnostics"
+        />
       </section>
 
       {!server.reachable ? (

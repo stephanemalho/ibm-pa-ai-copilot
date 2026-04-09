@@ -510,7 +510,13 @@ const CubeWorkspace = ({
         businessFlowId={businessFlowId ?? undefined}
         cube={cube}
         dimensionCount={initialDimensions.length}
+        dimensions={initialDimensions}
         fromSearch={fromSearch}
+        selectedDimension={
+          effectiveDetailState.status === "success"
+            ? effectiveDetailState.dimension
+            : undefined
+        }
       />
 
       {businessFlow ? (

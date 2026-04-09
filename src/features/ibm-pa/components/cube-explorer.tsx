@@ -13,9 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
+import { DiagnosticBadge } from "@/features/ibm-pa/components/diagnostic-badge";
 import { FavoriteToggle } from "@/features/ibm-pa/components/favorite-toggle";
 import { FavoritesPanel } from "@/features/ibm-pa/components/favorites-panel";
 import { RecentCubesPanel } from "@/features/ibm-pa/components/recent-cubes-panel";
+import { deriveCubeDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
 import { cubeAccessibilityResponseSchema } from "@/features/ibm-pa/lib/route-schemas";
 import { getCubeSemanticDescriptor } from "@/features/ibm-pa/lib/semantic";
 import { getCubeWorkspaceHref } from "@/features/ibm-pa/lib/cube-workspace-url-state";
@@ -339,6 +341,9 @@ const CubeBrowserCard = ({
   selected: boolean;
 }): ReactNode => {
   const semantic = getCubeSemanticDescriptor(cube);
+  const diagnostics = deriveCubeDiagnostics({
+    cube,
+  });
 
   return (
     <Card
@@ -410,6 +415,11 @@ const CubeBrowserCard = ({
           <span className="rounded-full bg-slate-100 px-3 py-1">
             {semantic.semanticKind}
           </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <DiagnosticBadge status={diagnostics.accessStatus} />
+          <DiagnosticBadge status={diagnostics.metadataRichnessStatus} />
+          <DiagnosticBadge status={diagnostics.manualEnrichmentStatus} />
         </div>
         {cube.reachable ? (
           <Link

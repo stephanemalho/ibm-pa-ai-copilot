@@ -5,16 +5,24 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
+import { DiagnosticBadge } from "@/features/ibm-pa/components/diagnostic-badge";
+import { deriveCubeDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
 import { getCubeSemanticDescriptor } from "@/features/ibm-pa/lib/semantic";
 import { getServerRoute } from "@/shared/lib/routes";
-import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
+import type {
+  CubeAccessibilityDiagnostic,
+  CubeDimensionStructureDiagnostic,
+  DimensionAccessibilityDiagnostic,
+} from "@/shared/types/ibm-pa";
 
 type CubeWorkspaceHeaderProps = {
   actions?: ReactNode;
   businessFlowId?: string | undefined;
   cube: CubeAccessibilityDiagnostic;
   dimensionCount: number;
+  dimensions?: CubeDimensionStructureDiagnostic[] | undefined;
   fromSearch?: string | undefined;
+  selectedDimension?: DimensionAccessibilityDiagnostic | null | undefined;
 };
 
 const CubeWorkspaceHeader = ({
@@ -22,7 +30,9 @@ const CubeWorkspaceHeader = ({
   businessFlowId,
   cube,
   dimensionCount,
+  dimensions,
   fromSearch,
+  selectedDimension,
 }: CubeWorkspaceHeaderProps): ReactNode => {
   const backHref = getServerBackHref(
     cube.serverName,
@@ -31,6 +41,11 @@ const CubeWorkspaceHeader = ({
     businessFlowId,
   );
   const semantic = getCubeSemanticDescriptor(cube);
+  const diagnostics = deriveCubeDiagnostics({
+    cube,
+    dimensions,
+    selectedDimension,
+  });
 
   return (
     <section className="space-y-5 rounded-[2rem] border border-white/80 bg-white/90 p-8 shadow-panel backdrop-blur xl:p-10">
@@ -47,6 +62,8 @@ const CubeWorkspaceHeader = ({
             classification={cube.classification}
             reachable={cube.reachable}
           />
+          <DiagnosticBadge status={diagnostics.previewReadinessStatus} />
+          <DiagnosticBadge status={diagnostics.comparisonReadinessStatus} />
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
             Cube workspace
           </span>
@@ -65,11 +82,7 @@ const CubeWorkspaceHeader = ({
             {semantic.technicalName}
           </p>
           <p className="max-w-3xl text-base leading-7 text-slate-600">
-            {getHeaderSummary({
-              cubeName: semantic.displayLabel,
-              dimensionCount,
-              reachable: cube.reachable,
-            })}
+            {diagnostics.summaryMessage}
           </p>
           <p className="max-w-3xl text-sm leading-6 text-slate-500">
             {semantic.usageHint}
@@ -78,20 +91,32 @@ const CubeWorkspaceHeader = ({
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
           <SummaryBlock
-            label="Semantic source"
-            value={semantic.sourceLabel}
+            label="Preview readiness"
+            value={diagnostics.previewReadinessStatus.label}
+          />
+          <SummaryBlock
+            label="Comparison readiness"
+            value={diagnostics.comparisonReadinessStatus.label}
+          />
+          <SummaryBlock
+            label="Metadata richness"
+            value={diagnostics.metadataRichnessStatus.label}
           />
           <SummaryBlock
             label="Semantic quality"
-            value={semantic.qualityLabel}
+            value={diagnostics.semanticQualityStatus.label}
+          />
+          <SummaryBlock
+            label="Dimension access"
+            value={diagnostics.dimensionAccessStatus.label}
           />
           <SummaryBlock
             label="Dimensions"
             value={dimensionCount.toString()}
           />
           <SummaryBlock
-            label="Unique name"
-            value={semantic.uniqueName}
+            label="Update metadata"
+            value={diagnostics.updateMetadataStatus.label}
           />
         </div>
       </div>
@@ -135,26 +160,6 @@ const getServerBackHref = (
   }
 
   return `${getServerRoute(serverName)}?${searchParams.toString()}`;
-};
-
-const getHeaderSummary = (params: {
-  cubeName: string;
-  dimensionCount: number;
-  reachable: boolean;
-}): string => {
-  if (!params.reachable) {
-    return `${params.cubeName} is visible in the catalog, but this account cannot currently open its structure workspace.`;
-  }
-
-  if (params.dimensionCount === 0) {
-    return `${params.cubeName} is ready for inspection. No structural dimensions were returned yet for this workspace.`;
-  }
-
-  if (params.dimensionCount === 1) {
-    return `${params.cubeName} currently exposes a single structural dimension, making this workspace straightforward to inspect.`;
-  }
-
-  return `${params.cubeName} is structured by ${params.dimensionCount} ordered dimensions. Use the workspace below to scan the structure and inspect one dimension at a time.`;
 };
 
 export { CubeWorkspaceHeader };

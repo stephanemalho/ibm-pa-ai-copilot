@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
+import { DiagnosticBadge } from "@/features/ibm-pa/components/diagnostic-badge";
+import { deriveDimensionDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
 import {
   getCubeSemanticDescriptor,
   getDimensionSemanticDescriptor,
@@ -118,6 +120,7 @@ const renderPanelContent = (params: {
 
   const { dimension } = params.detailState;
   const semantic = getDimensionSemanticDescriptor(dimension);
+  const diagnostics = deriveDimensionDiagnostics(dimension);
 
   if (!dimension.reachable) {
     return (
@@ -130,12 +133,31 @@ const renderPanelContent = (params: {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-2">
+        <DiagnosticBadge status={diagnostics.accessStatus} />
+        <DiagnosticBadge status={diagnostics.hierarchyMetadataStatus} />
+        <DiagnosticBadge status={diagnostics.memberPreviewStatus} />
+        <DiagnosticBadge status={diagnostics.manualEnrichmentStatus} />
+      </div>
+
+      <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+        <p className="text-sm font-medium text-slate-900">Diagnostic summary</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {diagnostics.summaryMessage}
+        </p>
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <Metric
           label="Hierarchy"
           value={dimension.hierarchy?.caption ?? dimension.hierarchyName ?? "Primary hierarchy"}
         />
         <Metric label="Semantic kind" value={semantic.semanticKind} />
+        <Metric label="Preview readiness" value={diagnostics.previewReadinessStatus.label} />
+        <Metric
+          label="Comparison readiness"
+          value={diagnostics.comparisonReadinessStatus.label}
+        />
         <Metric
           label="Hierarchy structure"
           value={dimension.hierarchy?.structure ?? "N/A"}
@@ -144,11 +166,20 @@ const renderPanelContent = (params: {
           label="Hierarchy cardinality"
           value={dimension.hierarchy?.cardinality?.toString() ?? "N/A"}
         />
+        <Metric label="Member preview" value={diagnostics.memberPreviewStatus.label} />
         <Metric label="Visible sample members" value={dimension.members.length.toString()} />
         <Metric label="Cube" value={getCubeSemanticDescriptor(params.cube).displayLabel} />
         <Metric label="Server" value={params.cube.serverName} />
         <Metric label="Semantic source" value={semantic.sourceLabel} />
         <Metric label="Semantic quality" value={semantic.qualityLabel} />
+        <Metric
+          label="Hierarchy metadata"
+          value={diagnostics.hierarchyMetadataStatus.label}
+        />
+        <Metric
+          label="Manual enrichment"
+          value={diagnostics.manualEnrichmentStatus.label}
+        />
       </div>
 
       <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
@@ -221,8 +252,9 @@ const renderPanelContent = (params: {
       </section>
 
       <p className="text-xs leading-5 text-slate-500">
-        Diagnostics remain secondary in this workspace and are only surfaced
-        when they help explain access or loading outcomes.
+        Diagnostics remain secondary in this workspace and help explain whether
+        the current dimension is ready for business exploration or still needs
+        consultant review.
       </p>
     </div>
   );
