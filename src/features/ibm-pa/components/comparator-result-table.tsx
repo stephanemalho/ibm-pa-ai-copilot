@@ -11,14 +11,15 @@ import {
   getInsightTone,
   getNumericComparatorRows,
 } from "@/features/ibm-pa/lib/analysis-formatting";
-import {
-  deriveComparatorInsights,
-} from "@/features/ibm-pa/lib/analysis-insights";
+import { deriveComparatorInsights } from "@/features/ibm-pa/lib/analysis-insights";
 import {
   getDimensionSemanticDescriptor,
   getMemberSemanticDescriptor,
 } from "@/features/ibm-pa/lib/semantic";
-import type { CubeComparatorResponse, CubeComparatorRow } from "@/shared/types/ibm-pa";
+import type {
+  CubeComparatorResponse,
+  CubeComparatorRow,
+} from "@/shared/types/ibm-pa";
 import { cn } from "@/shared/lib/utils";
 
 type ComparatorResultTableProps = {
@@ -82,10 +83,13 @@ const ComparatorResultTable = ({
         />
         <SummaryCard
           label="Net variance"
-          tone={getToneTextClassName(getInsightTone(summary.netVariancePercentage))}
+          tone={getToneTextClassName(
+            getInsightTone(summary.netVariancePercentage),
+          )}
           value={formatVariance(summary.netVariancePercentage)}
           supporting={
-            summary.totalBaseValue === null || summary.totalCompareValue === null
+            summary.totalBaseValue === null ||
+            summary.totalCompareValue === null
               ? "Not available for mixed or incomplete values"
               : "Computed from comparable totals"
           }
@@ -147,17 +151,24 @@ const ComparatorResultTable = ({
                     <BodyCell>
                       <div className="space-y-1">
                         <p className="font-medium text-slate-900">
-                          {getMemberSemanticDescriptor({
-                            name: row.rowMemberName,
-                          }).displayLabel}
+                          {
+                            getMemberSemanticDescriptor({
+                              name: row.rowMemberName,
+                            }).displayLabel
+                          }
                         </p>
                         {row.rowUniqueName ? (
-                          <p className="text-xs text-slate-500">{row.rowUniqueName}</p>
+                          <p className="text-xs text-slate-500">
+                            {row.rowUniqueName}
+                          </p>
                         ) : null}
                       </div>
                     </BodyCell>
                     <BodyCell align="right" numeric>
-                      {formatMeasureValue(row.baseFormattedValue, row.baseValue)}
+                      {formatMeasureValue(
+                        row.baseFormattedValue,
+                        row.baseValue,
+                      )}
                     </BodyCell>
                     <BodyCell align="right" numeric>
                       {formatMeasureValue(
@@ -204,10 +215,16 @@ const ComparatorResultTable = ({
                 className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700"
                 key={`${filter.dimensionName}-${filter.memberName}`}
               >
-                {getDimensionSemanticDescriptor({
-                  name: filter.dimensionName,
-                }).displayLabel}
-                : {getMemberSemanticDescriptor({ name: filter.memberName }).displayLabel}
+                {
+                  getDimensionSemanticDescriptor({
+                    name: filter.dimensionName,
+                  }).displayLabel
+                }
+                :{" "}
+                {
+                  getMemberSemanticDescriptor({ name: filter.memberName })
+                    .displayLabel
+                }
               </span>
             ))}
           </div>

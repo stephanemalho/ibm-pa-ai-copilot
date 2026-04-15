@@ -112,6 +112,66 @@ type CubeSampleMemberSet = {
   serverName: string;
 };
 
+type Tm1MessageLogEntry = {
+  id: string;
+  level: string;
+  logger: string;
+  message: string;
+  serverName: string;
+  sessionId?: string | undefined;
+  threadId?: string | undefined;
+  timestamp: string;
+};
+
+type Tm1RecentMessageLogsResponse = {
+  cutoffTimestamp: string;
+  entries: Tm1MessageLogEntry[];
+  levelFilter?: string | undefined;
+  levels: string[];
+  limit: number;
+  minutes: number;
+  mode: IbmPaMode;
+  returnedEntryCount: number;
+  scannedEntryCount: number;
+  serverName: string;
+};
+
+type MappingNodeKind = "cube" | "dimension" | "process" | "server";
+
+type MappingEdgeKind = "contains" | "mentions" | "uses";
+
+type Tm1MappingNode = {
+  id: string;
+  kind: MappingNodeKind;
+  label: string;
+  secondaryLabel?: string | undefined;
+  serverName: string;
+};
+
+type Tm1MappingEdge = {
+  id: string;
+  kind: MappingEdgeKind;
+  label: string;
+  source: string;
+  target: string;
+};
+
+type Tm1MetadataMappingSummary = {
+  cubeCount: number;
+  dimensionCount: number;
+  edgeCount: number;
+  includesProcesses: boolean;
+  processCount: number;
+};
+
+type Tm1MetadataMappingResponse = {
+  edges: Tm1MappingEdge[];
+  mode: IbmPaMode;
+  nodes: Tm1MappingNode[];
+  serverName: string;
+  summary: Tm1MetadataMappingSummary;
+};
+
 type CubeDataPreviewFilter = {
   dimensionName: string;
   hierarchyName?: string | undefined;
@@ -264,11 +324,19 @@ export type {
   DimensionSemanticMetadata,
   CubesResponse,
   IbmPaMode,
+  MappingEdgeKind,
+  MappingNodeKind,
   ServerAccessibilityClassification,
   ServerAccessibilityDiagnostic,
   ServerAccessibilityResponse,
   Tm1AttributeMap,
   Tm1HierarchyMetadata,
   Tm1LocalizedAttributeMap,
+  Tm1MappingEdge,
+  Tm1MappingNode,
+  Tm1MessageLogEntry,
   Tm1Member,
+  Tm1MetadataMappingResponse,
+  Tm1MetadataMappingSummary,
+  Tm1RecentMessageLogsResponse,
 };

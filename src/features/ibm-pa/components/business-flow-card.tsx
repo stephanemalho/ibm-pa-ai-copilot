@@ -16,9 +16,11 @@ type BusinessFlowCardProps = {
   flow: BusinessFlowDefinition;
   href: string;
   isActive?: boolean | undefined;
-  recommendation?: {
-    note: string;
-  } | undefined;
+  recommendation?:
+    | {
+        note: string;
+      }
+    | undefined;
 };
 
 const BusinessFlowCard = ({
@@ -54,7 +56,10 @@ const BusinessFlowCard = ({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2 text-sm text-slate-600">
-          <p>Recommended row focus: {flow.recommendedRowDimensionNames.join(", ")}</p>
+          <p>
+            Recommended row focus:{" "}
+            {flow.recommendedRowDimensionNames.join(", ")}
+          </p>
           <p>Suggested business context: {flow.semanticTags.join(" / ")}</p>
           {recommendation ? (
             <p className="rounded-[1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">

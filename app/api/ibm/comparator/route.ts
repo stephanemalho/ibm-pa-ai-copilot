@@ -53,7 +53,8 @@ export const POST = async (request: Request): Promise<NextResponse> => {
       cubeName: comparatorRequest.cubeName,
       ...(comparatorRequest.rowDimensionHierarchyName
         ? {
-            rowDimensionHierarchyName: comparatorRequest.rowDimensionHierarchyName,
+            rowDimensionHierarchyName:
+              comparatorRequest.rowDimensionHierarchyName,
           }
         : {}),
       rowDimensionName: comparatorRequest.rowDimensionName,

@@ -52,7 +52,9 @@ const CubeWorkspaceHeader = ({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Button asChild variant="ghost">
           <Link href={backHref}>
-            {businessFlowId ? "Back to guided cube browser" : "Back to cube browser"}
+            {businessFlowId
+              ? "Back to guided cube browser"
+              : "Back to cube browser"}
           </Link>
         </Button>
 
@@ -110,10 +112,7 @@ const CubeWorkspaceHeader = ({
             label="Dimension access"
             value={diagnostics.dimensionAccessStatus.label}
           />
-          <SummaryBlock
-            label="Dimensions"
-            value={dimensionCount.toString()}
-          />
+          <SummaryBlock label="Dimensions" value={dimensionCount.toString()} />
           <SummaryBlock
             label="Update metadata"
             value={diagnostics.updateMetadataStatus.label}

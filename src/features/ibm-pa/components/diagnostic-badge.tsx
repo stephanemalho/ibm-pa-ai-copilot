@@ -21,9 +21,7 @@ const DiagnosticBadge = ({ status }: DiagnosticBadgeProps): ReactNode => {
   );
 };
 
-const getToneClassName = (
-  tone: DiagnosticStatus["tone"],
-): string => {
+const getToneClassName = (tone: DiagnosticStatus["tone"]): string => {
   switch (tone) {
     case "good":
       return "bg-emerald-100 text-emerald-800";

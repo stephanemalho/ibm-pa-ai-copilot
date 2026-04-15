@@ -19,9 +19,7 @@ const InsightCards = ({
   title,
 }: InsightCardsProps): ReactNode => {
   if (insights.length === 0) {
-    return (
-      <EmptyState description={emptyDescription} title={emptyTitle} />
-    );
+    return <EmptyState description={emptyDescription} title={emptyTitle} />;
   }
 
   return (
@@ -47,7 +45,12 @@ const InsightCards = ({
             <p className="mt-2 text-sm font-medium text-slate-600">
               {insight.valueLabel}
             </p>
-            <p className={cn("mt-2 text-lg font-semibold", getToneClassName(insight.tone))}>
+            <p
+              className={cn(
+                "mt-2 text-lg font-semibold",
+                getToneClassName(insight.tone),
+              )}
+            >
               {insight.metric}
             </p>
             {insight.supportingText ? (
@@ -77,9 +80,7 @@ const EmptyState = ({
   );
 };
 
-const getToneClassName = (
-  tone: AnalysisInsight["tone"],
-): string => {
+const getToneClassName = (tone: AnalysisInsight["tone"]): string => {
   switch (tone) {
     case "positive":
       return "text-emerald-900";

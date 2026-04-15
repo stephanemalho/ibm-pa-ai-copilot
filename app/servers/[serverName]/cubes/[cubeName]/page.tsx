@@ -1,7 +1,12 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { BusinessFlowContextBanner } from "@/features/ibm-pa/components/business-flow-context-banner";
 import { CubeWorkspace } from "@/features/ibm-pa/components/cube-workspace";
 import { CubeWorkspaceHeader } from "@/features/ibm-pa/components/cube-workspace-header";
@@ -39,10 +44,14 @@ const CubeWorkspacePage = async ({
   const resolvedSearchParams = await searchParams;
   const serverName = decodeURIComponent(resolvedParams.serverName);
   const cubeName = decodeURIComponent(resolvedParams.cubeName);
-  const requestedDimension = getSingleSearchParam(resolvedSearchParams.dimension);
+  const requestedDimension = getSingleSearchParam(
+    resolvedSearchParams.dimension,
+  );
   const businessFlowId = getSingleSearchParam(resolvedSearchParams.flow);
   const fromSearch = getSingleSearchParam(resolvedSearchParams.fromSearch);
-  const businessFlow = businessFlowId ? getBusinessFlow(businessFlowId) : undefined;
+  const businessFlow = businessFlowId
+    ? getBusinessFlow(businessFlowId)
+    : undefined;
   const diagnostics = await getServerAccessibilityDiagnostics();
   const server = diagnostics.servers.find(
     (candidate) => candidate.name === serverName,
@@ -59,7 +68,9 @@ const CubeWorkspacePage = async ({
         mode: diagnostics.mode,
         serverName,
       };
-  const cube = cubeDiagnostics.cubes.find((candidate) => candidate.name === cubeName);
+  const cube = cubeDiagnostics.cubes.find(
+    (candidate) => candidate.name === cubeName,
+  );
 
   if (!cube) {
     notFound();
@@ -84,7 +95,9 @@ const CubeWorkspacePage = async ({
 
         <Card className="border-slate-200 bg-slate-50">
           <CardHeader>
-            <CardTitle className="text-xl">Cube workspace unavailable</CardTitle>
+            <CardTitle className="text-xl">
+              Cube workspace unavailable
+            </CardTitle>
             <CardDescription>
               This cube remains visible in the catalog, but the current account
               cannot open its structural workspace right now.
@@ -110,28 +123,31 @@ const CubeWorkspacePage = async ({
     businessFlow && flowDimensionDiagnostics
       ? getBusinessFlowPreviewDefaults(
           businessFlow,
-          flowDimensionDiagnostics.dimensions.filter((dimension) => dimension.reachable),
+          flowDimensionDiagnostics.dimensions.filter(
+            (dimension) => dimension.reachable,
+          ),
         )
       : undefined;
   const selectedDimensionName =
     requestedDimension ??
     businessFlowPreviewDefaults?.selectedDimensionName ??
-    dimensionStructure.dimensions.find((dimension) => dimension.reachable)?.name ??
+    dimensionStructure.dimensions.find((dimension) => dimension.reachable)
+      ?.name ??
     null;
   const initialSelectedDimension = selectedDimensionName
     ? (flowDimensionDiagnostics?.dimensions.find(
         (dimension) => dimension.name === selectedDimensionName,
       ) ??
-        (dimensionStructure.dimensions.some(
-          (dimension) => dimension.name === selectedDimensionName,
-        )
-          ? await getDimensionAccessibilityDiagnostic({
-              cubeName,
-              dimensionName: selectedDimensionName,
-              sampleSize: 24,
-              serverName,
-            })
-          : null))
+      (dimensionStructure.dimensions.some(
+        (dimension) => dimension.name === selectedDimensionName,
+      )
+        ? await getDimensionAccessibilityDiagnostic({
+            cubeName,
+            dimensionName: selectedDimensionName,
+            sampleSize: 24,
+            serverName,
+          })
+        : null))
     : null;
 
   return (

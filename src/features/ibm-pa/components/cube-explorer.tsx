@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,15 +18,14 @@ import { FavoriteToggle } from "@/features/ibm-pa/components/favorite-toggle";
 import { FavoritesPanel } from "@/features/ibm-pa/components/favorites-panel";
 import { RecentCubesPanel } from "@/features/ibm-pa/components/recent-cubes-panel";
 import { deriveCubeDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
-import { cubeAccessibilityResponseSchema } from "@/features/ibm-pa/lib/route-schemas";
 import { getCubeSemanticDescriptor } from "@/features/ibm-pa/lib/semantic";
 import { getCubeWorkspaceHref } from "@/features/ibm-pa/lib/cube-workspace-url-state";
-import { appRoutes } from "@/shared/lib/routes";
 import { cn } from "@/shared/lib/utils";
 import type { CubeAccessibilityDiagnostic } from "@/shared/types/ibm-pa";
 
 type CubeExplorerProps = {
   businessFlowId?: string | undefined;
+  contextSidebar?: ReactNode;
   initialCubeName?: string | undefined;
   initialCubes: CubeAccessibilityDiagnostic[];
   initialSearchTerm?: string | undefined;
@@ -37,65 +36,24 @@ const cubesPerPage = 10;
 
 const CubeExplorer = ({
   businessFlowId,
+  contextSidebar,
   initialCubeName,
   initialCubes,
   initialSearchTerm,
   serverName,
 }: CubeExplorerProps): ReactNode => {
-  const [cubeDiagnostics, setCubeDiagnostics] =
-    useState<CubeAccessibilityDiagnostic[]>(initialCubes);
+  const cubeDiagnostics = initialCubes;
   const [cubeSearchTerm, setCubeSearchTerm] = useState(initialSearchTerm ?? "");
   const [cubePage, setCubePage] = useState(1);
-  const [cubeRequestNonce, setCubeRequestNonce] = useState(0);
   const selectedCube = useMemo(() => {
     return (
       cubeDiagnostics.find((cube) => cube.name === initialCubeName) ?? null
     );
   }, [cubeDiagnostics, initialCubeName]);
 
-  useEffect(() => {
-    if (cubeRequestNonce === 0) {
-      return;
-    }
-
-    let isActive = true;
-
-    const loadCubeDiagnostics = async (): Promise<void> => {
-      try {
-        const response = await fetch(
-          `${appRoutes.ibmCubeAccess}?server=${encodeURIComponent(serverName)}`,
-          {
-            cache: "no-store",
-          },
-        );
-        const payload = (await response.json()) as unknown;
-
-        if (!response.ok) {
-          return;
-        }
-
-        const parsedPayload = cubeAccessibilityResponseSchema.parse(payload);
-
-        if (!isActive) {
-          return;
-        }
-
-        setCubeDiagnostics(parsedPayload.cubes);
-      } catch {
-        if (!isActive) {
-          return;
-        }
-      }
-    };
-
-    void loadCubeDiagnostics();
-
-    return () => {
-      isActive = false;
-    };
-  }, [cubeRequestNonce, serverName]);
-
-  const accessibleCubeCount = cubeDiagnostics.filter((cube) => cube.reachable).length;
+  const accessibleCubeCount = cubeDiagnostics.filter(
+    (cube) => cube.reachable,
+  ).length;
   const normalizedCubeSearchTerm = cubeSearchTerm.trim().toLowerCase();
   const filteredCubes = cubeDiagnostics.filter((cube) => {
     const semantic = getCubeSemanticDescriptor(cube);
@@ -115,188 +73,191 @@ const CubeExplorer = ({
   );
 
   return (
-    <div className="space-y-6">
-      <Card className="border-slate-200/80 bg-white/90">
-        <CardHeader>
-          <CardTitle className="text-xl">Cube browser</CardTitle>
-          <CardDescription>
-            Browse the cube catalog for this TM1 server, then open a dedicated
-            workspace for the cube you want to inspect.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-            <div className="space-y-2">
-              <label
-                className="text-sm font-medium text-slate-700"
-                htmlFor="cube-search"
-              >
-                Search cubes
-              </label>
-              <Input
-                id="cube-search"
-                onChange={(event) => {
-                  setCubeSearchTerm(event.target.value);
-                  setCubePage(1);
-                }}
-                placeholder="Filter cubes by name"
-                value={cubeSearchTerm}
-              />
-            </div>
+    <div className="min-w-0 overflow-hidden xl:h-[calc(100vh-8rem)] xl:min-h-0">
+      <div className="grid min-w-0 gap-6 xl:h-full xl:min-h-0 xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
+        {contextSidebar ? (
+          <aside className="min-w-0 xl:h-full xl:min-h-0 xl:overflow-y-auto">
+            <div className="space-y-4 pr-1">{contextSidebar}</div>
+          </aside>
+        ) : null}
 
-            <div className="flex flex-wrap gap-3 text-sm">
-              <SummaryChip
-                label="Discovered cubes"
-                value={cubeDiagnostics.length.toString()}
-              />
-              <SummaryChip
-                label="Accessible cubes"
-                value={accessibleCubeCount.toString()}
-              />
-              <SummaryChip
-                label="Visible results"
-                value={filteredCubes.length.toString()}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 text-sm text-slate-600">
-            <p>
-              Showing{" "}
-              <span className="font-medium text-slate-950">
-                {filteredCubes.length === 0
-                  ? 0
-                  : (safeCubePage - 1) * cubesPerPage + 1}
-              </span>{" "}
-              to{" "}
-              <span className="font-medium text-slate-950">
-                {Math.min(safeCubePage * cubesPerPage, filteredCubes.length)}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-slate-950">
-                {filteredCubes.length}
-              </span>{" "}
-              cubes
-            </p>
-
-            <div className="flex items-center gap-2">
-              <Button
-                disabled={safeCubePage <= 1}
-                onClick={() => {
-                  setCubePage((currentValue) => Math.max(currentValue - 1, 1));
-                }}
-                type="button"
-                variant="secondary"
-              >
-                Previous
-              </Button>
-              <span className="min-w-24 text-center text-sm font-medium text-slate-700">
-                Page {safeCubePage} of {totalCubePages}
-              </span>
-              <Button
-                disabled={safeCubePage >= totalCubePages}
-                onClick={() => {
-                  setCubePage((currentValue) =>
-                    Math.min(currentValue + 1, totalCubePages),
-                  );
-                }}
-                type="button"
-                variant="secondary"
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.9fr)]">
-        <Card className="border-slate-200/80 bg-white/90">
-          <CardHeader>
-            <CardTitle className="text-xl">Cubes</CardTitle>
-            <CardDescription>
-              Accessible cubes open a dedicated schema workspace. Inaccessible
-              cubes remain visible for access review.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 xl:max-h-[42rem] xl:overflow-y-auto">
-            {paginatedCubes.length === 0 ? (
-              <EmptyState
-                description="No cubes match the current search."
-                title="No visible cubes"
-              />
-            ) : (
-              paginatedCubes.map((cube) => (
-                <CubeBrowserCard
-                  cube={cube}
-                  href={getCubeHref({
-                  cubeName: cube.name,
-                  flowId: businessFlowId,
-                  searchTerm: cubeSearchTerm,
-                  serverName,
-                })}
-                  key={cube.name}
-                  selected={cube.name === selectedCube?.name}
-                />
-              ))
-            )}
-
-            <Button
-              onClick={() => {
-                setCubeRequestNonce((currentValue) => currentValue + 1);
-              }}
-              type="button"
-              variant="secondary"
-            >
-              Refresh cube access
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-dashed border-slate-300 bg-slate-50/80 xl:sticky xl:top-24">
-          <CardHeader>
-            <CardTitle className="text-xl">Workspace entry</CardTitle>
-            <CardDescription>
-              Keep this page focused on browsing, then open a cube workspace for
-              structure and dimension inspection.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-slate-600">
-            {selectedCube ? (
-              <div className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Last opened cube
-                </p>
-                <p className="text-lg font-semibold text-slate-950">
-                  {getCubeSemanticDescriptor(selectedCube).displayLabel}
-                </p>
-                <DetailRow label="Technical name" value={selectedCube.name} />
-                <DetailRow label="Server" value={selectedCube.serverName} />
-                <DetailRow
-                  label="Workspace"
-                  value={selectedCube.reachable ? "Available" : "Unavailable"}
+        <section className="flex min-w-0 flex-col gap-4 xl:h-full xl:min-h-0">
+          <div className="rounded-[1.25rem] border border-slate-200/80 bg-white/90 px-4 py-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium text-slate-700"
+                  htmlFor="cube-search"
+                >
+                  Search cubes
+                </label>
+                <Input
+                  id="cube-search"
+                  onChange={(event) => {
+                    setCubeSearchTerm(event.target.value);
+                    setCubePage(1);
+                  }}
+                  placeholder="Filter cubes by name"
+                  value={cubeSearchTerm}
                 />
               </div>
-            ) : null}
 
-            <div className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-white p-5">
-              <DetailRow
-                label="Filtered cubes"
-                value={filteredCubes.length.toString()}
-              />
-              <DetailRow
-                label="Accessible in results"
-                value={filteredCubes
-                  .filter((cube) => cube.reachable)
-                  .length.toString()}
-              />
-              <DetailRow label="Server" value={serverName} />
+              <div className="flex flex-wrap gap-2 text-sm">
+                <SummaryChip
+                  label="Discovered"
+                  value={cubeDiagnostics.length.toString()}
+                />
+                <SummaryChip
+                  label="Accessible"
+                  value={accessibleCubeCount.toString()}
+                />
+                <SummaryChip
+                  label="Visible"
+                  value={filteredCubes.length.toString()}
+                />
+              </div>
             </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-3 text-sm text-slate-600">
+              <p>
+                Showing{" "}
+                <span className="font-medium text-slate-950">
+                  {filteredCubes.length === 0
+                    ? 0
+                    : (safeCubePage - 1) * cubesPerPage + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-medium text-slate-950">
+                  {Math.min(safeCubePage * cubesPerPage, filteredCubes.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-slate-950">
+                  {filteredCubes.length}
+                </span>
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="min-w-24 text-center text-sm font-medium text-slate-700">
+                  Page {safeCubePage} of {totalCubePages}
+                </span>
+                <Button
+                  disabled={safeCubePage <= 1}
+                  onClick={() => {
+                    setCubePage((currentValue) =>
+                      Math.max(currentValue - 1, 1),
+                    );
+                  }}
+                  size="lg"
+                  type="button"
+                  variant="secondary"
+                >
+                  Previous
+                </Button>
+                <Button
+                  disabled={safeCubePage >= totalCubePages}
+                  onClick={() => {
+                    setCubePage((currentValue) =>
+                      Math.min(currentValue + 1, totalCubePages),
+                    );
+                  }}
+                  size="lg"
+                  type="button"
+                  variant="secondary"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <Card className="min-h-0 min-w-0 flex flex-1 flex-col overflow-hidden border-slate-200/80 bg-white/90">
+            <CardHeader className="space-y-2 pb-4">
+              <CardTitle className="text-lg">Cubes</CardTitle>
+              <CardDescription>
+                Accessible cubes open a workspace. Visible-only cubes remain
+                available for qualification and access review.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+              {paginatedCubes.length === 0 ? (
+                <EmptyState
+                  description="No cubes match the current search."
+                  title="No visible cubes"
+                />
+              ) : (
+                <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+                  {paginatedCubes.map((cube) => (
+                    <CubeBrowserCard
+                      cube={cube}
+                      href={getCubeHref({
+                        cubeName: cube.name,
+                        flowId: businessFlowId,
+                        searchTerm: cubeSearchTerm,
+                        serverName,
+                      })}
+                      key={cube.name}
+                      selected={cube.name === selectedCube?.name}
+                    />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <aside className="min-w-0 xl:h-full xl:min-h-0 xl:overflow-y-auto">
+          <div className="space-y-4 pl-1">
+            <Card className="border-dashed border-slate-300 bg-slate-50/80">
+              <CardHeader className="space-y-2 pb-4">
+                <CardTitle className="text-lg">Workspace entry</CardTitle>
+                <CardDescription>
+                  Keep browsing in the center, while this rail tracks your
+                  current workspace context.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-slate-600">
+                {selectedCube ? (
+                  <div className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Last opened cube
+                    </p>
+                    <p className="text-base font-semibold text-slate-950">
+                      {getCubeSemanticDescriptor(selectedCube).displayLabel}
+                    </p>
+                    <DetailRow
+                      label="Technical name"
+                      value={selectedCube.name}
+                    />
+                    <DetailRow label="Server" value={selectedCube.serverName} />
+                    <DetailRow
+                      label="Workspace"
+                      value={
+                        selectedCube.reachable ? "Available" : "Unavailable"
+                      }
+                    />
+                  </div>
+                ) : null}
+
+                <div className="space-y-3 rounded-[1.25rem] border border-slate-200 bg-white p-4">
+                  <DetailRow
+                    label="Filtered cubes"
+                    value={filteredCubes.length.toString()}
+                  />
+                  <DetailRow
+                    label="Accessible in results"
+                    value={filteredCubes
+                      .filter((cube) => cube.reachable)
+                      .length.toString()}
+                  />
+                  <DetailRow label="Server" value={serverName} />
+                </div>
+              </CardContent>
+            </Card>
 
             <FavoritesPanel currentServerName={serverName} />
             <RecentCubesPanel currentServerName={serverName} />
-          </CardContent>
-        </Card>
+          </div>
+        </aside>
       </div>
     </div>
   );
@@ -315,10 +276,7 @@ const CubeMetadata = ({
         label="Schema update"
         value={cube.lastSchemaUpdate ?? "N/A"}
       />
-      <MetadataRow
-        label="Data update"
-        value={cube.lastDataUpdate ?? "N/A"}
-      />
+      <MetadataRow label="Data update" value={cube.lastDataUpdate ?? "N/A"} />
       <MetadataRow
         label="Semantic quality"
         value={getCubeSemanticDescriptor(cube).qualityLabel}
@@ -348,7 +306,7 @@ const CubeBrowserCard = ({
   return (
     <Card
       className={cn(
-        "border transition-colors",
+        "min-w-0 border transition-colors",
         cube.reachable
           ? "border-slate-200 bg-white shadow-sm hover:border-slate-300"
           : "border-slate-200 bg-slate-100/70 text-slate-500",
@@ -357,7 +315,7 @@ const CubeBrowserCard = ({
           : "",
       )}
     >
-      <CardHeader className="space-y-3 pb-4">
+      <CardHeader className="space-y-3 pb-3">
         <div className="flex items-start justify-between gap-4">
           {cube.reachable ? (
             <Link
@@ -365,20 +323,20 @@ const CubeBrowserCard = ({
               href={href}
             >
               <div className="space-y-2">
-                <p className="truncate text-base font-semibold leading-6 text-slate-950">
+                <p className="truncate text-sm font-semibold leading-6 text-slate-950">
                   {semantic.displayLabel}
                 </p>
                 <p className="truncate text-xs uppercase tracking-[0.16em] text-slate-500">
                   {semantic.technicalName}
                 </p>
-                <p className="text-sm leading-6 text-slate-600">
+                <p className="line-clamp-2 text-sm leading-6 text-slate-600">
                   {semantic.description}
                 </p>
               </div>
             </Link>
           ) : (
             <div className="min-w-0 flex-1 space-y-2">
-              <p className="truncate text-base font-semibold leading-6 text-slate-950">
+              <p className="truncate text-sm font-semibold leading-6 text-slate-950">
                 {semantic.displayLabel}
               </p>
               <p className="truncate text-xs uppercase tracking-[0.16em] text-slate-500">

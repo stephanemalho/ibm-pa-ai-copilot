@@ -18,12 +18,20 @@ import type {
   DimensionAccessibilityDiagnostic,
   DimensionSemanticMetadata,
   IbmPaMode,
+  MappingEdgeKind,
+  MappingNodeKind,
   ServerAccessibilityClassification as Tm1ServerAccessibilityClassification,
   ServerAccessibilityDiagnostic as Tm1ServerAccessibilityDiagnostic,
   Tm1AttributeMap,
   Tm1HierarchyMetadata,
   Tm1LocalizedAttributeMap,
+  Tm1MappingEdge,
+  Tm1MappingNode,
+  Tm1MessageLogEntry,
   Tm1Member,
+  Tm1MetadataMappingResponse as SharedTm1MetadataMappingResponse,
+  Tm1MetadataMappingSummary,
+  Tm1RecentMessageLogsResponse as SharedTm1RecentMessageLogsResponse,
 } from "@/shared/types/ibm-pa";
 
 type IbmPaLogContextValue = boolean | null | number | string | undefined;
@@ -151,6 +159,23 @@ type CubeDataPreviewResult = SharedCubeDataPreviewResponse;
 
 type CubeComparatorResult = SharedCubeComparatorResponse;
 
+type GetRecentMessageLogsParams = {
+  level?: string;
+  limit?: number;
+  minutes?: number;
+  serverName?: string;
+};
+
+type Tm1RecentMessageLogsResult = SharedTm1RecentMessageLogsResponse;
+
+type GetMetadataMappingParams = {
+  includeProcesses?: boolean;
+  maxCubes?: number;
+  serverName?: string;
+};
+
+type Tm1MetadataMappingResult = SharedTm1MetadataMappingResponse;
+
 type RunMdxParams = {
   cubeName?: string;
   mdx: string;
@@ -246,6 +271,8 @@ export type {
   GetCubeDimensionsParams,
   GetCubeSampleMembersParams,
   GetDimensionAccessibilityDiagnosticParams,
+  GetMetadataMappingParams,
+  GetRecentMessageLogsParams,
   IbmPaHealthStatus,
   IbmPaLogContext,
   IbmPaLogContextValue,
@@ -257,6 +284,8 @@ export type {
   ListCubesParams,
   ListCubesResult,
   ListTm1ServersResult,
+  MappingEdgeKind,
+  MappingNodeKind,
   MdxAxis,
   MdxAxisMember,
   MdxCell,
@@ -270,8 +299,14 @@ export type {
   Tm1HierarchyMetadata,
   Tm1HierarchySummary,
   Tm1LocalizedAttributeMap,
+  Tm1MappingEdge,
+  Tm1MappingNode,
   Tm1MetadataEnvelope,
+  Tm1MetadataMappingResult,
+  Tm1MetadataMappingSummary,
+  Tm1MessageLogEntry,
   Tm1Member,
+  Tm1RecentMessageLogsResult,
   Tm1ServerAccessibilityClassification,
   Tm1ServerAccessibilityDiagnostic,
   Tm1ServerAccessibilityDiagnosticsResult,

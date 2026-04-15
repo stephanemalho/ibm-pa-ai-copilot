@@ -1,7 +1,12 @@
 import { redirect, notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { BusinessFlowEntrySection } from "@/features/ibm-pa/components/business-flow-entry-section";
 import { ServerCard } from "@/features/ibm-pa/components/server-card";
 import {
@@ -54,7 +59,8 @@ const BusinessFlowResolverPage = async ({
   });
 
   for (const candidateServerName of candidateServerNames) {
-    const cubeDiagnostics = await getCubeAccessibilityDiagnostics(candidateServerName);
+    const cubeDiagnostics =
+      await getCubeAccessibilityDiagnostics(candidateServerName);
     const recommendedCube = getBusinessFlowRecommendedCube(
       flow,
       cubeDiagnostics.cubes,
@@ -71,7 +77,9 @@ const BusinessFlowResolverPage = async ({
     });
     const previewDefaults = getBusinessFlowPreviewDefaults(
       flow,
-      dimensionDiagnostics.dimensions.filter((dimension) => dimension.reachable),
+      dimensionDiagnostics.dimensions.filter(
+        (dimension) => dimension.reachable,
+      ),
     );
 
     redirect(
@@ -87,9 +95,7 @@ const BusinessFlowResolverPage = async ({
   }
 
   const fallbackServerName =
-    preferredServerName ??
-    flow.targetServerName ??
-    accessibleServers[0]?.name;
+    preferredServerName ?? flow.targetServerName ?? accessibleServers[0]?.name;
 
   if (fallbackServerName) {
     redirect(getServerFlowFallbackHref(fallbackServerName, flow.id));

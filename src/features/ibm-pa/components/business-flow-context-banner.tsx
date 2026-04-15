@@ -37,7 +37,9 @@ const BusinessFlowContextBanner = ({
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-950">{flow.title}</h2>
+            <h2 className="text-xl font-semibold text-slate-950">
+              {flow.title}
+            </h2>
             <p className="max-w-3xl text-sm leading-6 text-slate-700">
               {flow.description}
             </p>
@@ -55,22 +57,26 @@ const BusinessFlowContextBanner = ({
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <Metric
           label="Recommended row"
-          value={previewDefaults?.previewRowDimensionName ?? "Choose the best time, measure, or entity axis"}
+          value={
+            previewDefaults?.previewRowDimensionName ??
+            "Choose the best time, measure, or entity axis"
+          }
         />
         <Metric
           label="Suggested context"
           value={
-            previewDefaults && previewDefaults.previewContextSelections.length > 0
+            previewDefaults &&
+            previewDefaults.previewContextSelections.length > 0
               ? previewDefaults.previewContextSelections
-                  .map((selection) => `${selection.dimensionName}: ${selection.memberName}`)
+                  .map(
+                    (selection) =>
+                      `${selection.dimensionName}: ${selection.memberName}`,
+                  )
                   .join(" | ")
               : "Add planning context before running a preview"
           }
         />
-        <Metric
-          label="Fallback guidance"
-          value={flow.fallbackHelpText}
-        />
+        <Metric label="Fallback guidance" value={flow.fallbackHelpText} />
       </div>
     </section>
   );
@@ -88,7 +94,9 @@ const Metric = ({
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-sm font-medium leading-6 text-slate-900">{value}</p>
+      <p className="mt-2 text-sm font-medium leading-6 text-slate-900">
+        {value}
+      </p>
     </div>
   );
 };

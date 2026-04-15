@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ComparatorQueryBuilder } from "@/features/ibm-pa/components/comparator-query-builder";
 import { ComparatorResultTable } from "@/features/ibm-pa/components/comparator-result-table";
 import {
@@ -25,13 +31,15 @@ type ComparatorPanelProps = {
   initialComparisonDimensionName?: string | undefined;
   initialContextSelections?: WorkspaceComparatorContextSelection[] | undefined;
   initialRowDimensionName?: string | undefined;
-  onStateChange?: ((value: {
-    comparatorBaseMemberName?: string | undefined;
-    comparatorCompareMemberName?: string | undefined;
-    comparatorComparisonDimensionName?: string | undefined;
-    comparatorContextSelections: WorkspaceComparatorContextSelection[];
-    comparatorRowDimensionName?: string | undefined;
-  }) => void) | undefined;
+  onStateChange?:
+    | ((value: {
+        comparatorBaseMemberName?: string | undefined;
+        comparatorCompareMemberName?: string | undefined;
+        comparatorComparisonDimensionName?: string | undefined;
+        comparatorContextSelections: WorkspaceComparatorContextSelection[];
+        comparatorRowDimensionName?: string | undefined;
+      }) => void)
+    | undefined;
   selectedDimensionName?: string | null | undefined;
   serverName: string;
 };
@@ -80,26 +88,30 @@ const ComparatorPanel = ({
   selectedDimensionName,
   serverName,
 }: ComparatorPanelProps): ReactNode => {
-  const [dimensionsState, setDimensionsState] = useState<ComparatorDimensionsState>({
-    status: "loading",
-  });
+  const [dimensionsState, setDimensionsState] =
+    useState<ComparatorDimensionsState>({
+      status: "loading",
+    });
   const [rowDimensionName, setRowDimensionName] = useState<string | null>(
     initialRowDimensionName ?? null,
   );
   const [comparisonDimensionName, setComparisonDimensionName] = useState<
     string | null
   >(initialComparisonDimensionName ?? null);
-  const [baseMemberName, setBaseMemberName] = useState(initialBaseMemberName ?? "");
+  const [baseMemberName, setBaseMemberName] = useState(
+    initialBaseMemberName ?? "",
+  );
   const [compareMemberName, setCompareMemberName] = useState(
     initialCompareMemberName ?? "",
   );
-  const [contextSelections, setContextSelections] = useState<ContextSelectionMap>(() => {
-    return Object.fromEntries(
-      (initialContextSelections ?? []).map((selection) => {
-        return [selection.dimensionName, selection.memberName];
-      }),
-    );
-  });
+  const [contextSelections, setContextSelections] =
+    useState<ContextSelectionMap>(() => {
+      return Object.fromEntries(
+        (initialContextSelections ?? []).map((selection) => {
+          return [selection.dimensionName, selection.memberName];
+        }),
+      );
+    });
   const [resultState, setResultState] = useState<ComparatorResultState>({
     status: "idle",
   });
@@ -138,7 +150,8 @@ const ComparatorPanel = ({
           return;
         }
 
-        const parsedPayload = dimensionAccessibilityResponseSchema.parse(payload);
+        const parsedPayload =
+          dimensionAccessibilityResponseSchema.parse(payload);
 
         if (!isActive) {
           return;
@@ -173,7 +186,9 @@ const ComparatorPanel = ({
   const effectiveRowDimensionName = useMemo(() => {
     if (
       rowDimensionName &&
-      accessibleDimensions.some((dimension) => dimension.name === rowDimensionName)
+      accessibleDimensions.some(
+        (dimension) => dimension.name === rowDimensionName,
+      )
     ) {
       return rowDimensionName;
     }
@@ -233,13 +248,19 @@ const ComparatorPanel = ({
   const effectiveBaseMemberName = useMemo(() => {
     if (
       baseMemberName &&
-      comparisonDimension?.members.some((member) => member.name === baseMemberName)
+      comparisonDimension?.members.some(
+        (member) => member.name === baseMemberName,
+      )
     ) {
       return baseMemberName;
     }
 
     return comparisonMemberDefaults.baseMemberName;
-  }, [baseMemberName, comparisonDimension, comparisonMemberDefaults.baseMemberName]);
+  }, [
+    baseMemberName,
+    comparisonDimension,
+    comparisonMemberDefaults.baseMemberName,
+  ]);
   const effectiveCompareMemberName = useMemo(() => {
     if (
       compareMemberName &&
@@ -299,7 +320,8 @@ const ComparatorPanel = ({
 
     if (!effectiveRowDimensionName) {
       return {
-        description: "Choose a row dimension to structure the comparison output.",
+        description:
+          "Choose a row dimension to structure the comparison output.",
         title: "Row dimension required",
       };
     }
@@ -591,7 +613,9 @@ const ComparatorPanel = ({
                   rowDimensionName={effectiveRowDimensionName}
                   selectedBaseMemberName={effectiveBaseMemberName}
                   selectedCompareMemberName={effectiveCompareMemberName}
-                  selectableComparisonDimensions={selectableComparisonDimensions}
+                  selectableComparisonDimensions={
+                    selectableComparisonDimensions
+                  }
                   selectableRowDimensions={accessibleDimensions}
                 />
 
@@ -601,8 +625,8 @@ const ComparatorPanel = ({
                   </p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     Use rows for the business list people will review line by
-                    line, then compare two members from one meaningful
-                    dimension while the remaining dimensions stay fixed.
+                    line, then compare two members from one meaningful dimension
+                    while the remaining dimensions stay fixed.
                   </p>
                 </div>
               </div>
@@ -646,10 +670,7 @@ const renderComparatorResult = (
 
   if (resultState.status === "error") {
     return (
-      <ErrorState
-        description={resultState.message}
-        title="Comparison failed"
-      />
+      <ErrorState description={resultState.message} title="Comparison failed" />
     );
   }
 

@@ -46,10 +46,7 @@ const FavoritesPanel = ({
       </div>
 
       {visibleFavorites.length === 0 ? (
-        <EmptyState
-          description="No favorite cubes yet."
-          title="No favorites"
-        />
+        <EmptyState description="No favorite cubes yet." title="No favorites" />
       ) : (
         <div className="space-y-2">
           {visibleFavorites.map((favorite) => (

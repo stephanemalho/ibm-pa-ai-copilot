@@ -216,14 +216,17 @@ const scoreCubeForBusinessFlow = (
   let score = 0;
 
   for (const preferredCubeName of flow.preferredCubeNames) {
-    const normalizedPreferredCubeName = normalizeSearchValue([preferredCubeName]);
+    const normalizedPreferredCubeName = normalizeSearchValue([
+      preferredCubeName,
+    ]);
 
     if (combinedValue.includes(normalizedPreferredCubeName)) {
       score += 40;
     }
 
     if (
-      semantic.technicalName.toLowerCase() === preferredCubeName.toLowerCase() ||
+      semantic.technicalName.toLowerCase() ===
+        preferredCubeName.toLowerCase() ||
       semantic.displayLabel.toLowerCase() === preferredCubeName.toLowerCase()
     ) {
       score += 80;
@@ -257,7 +260,10 @@ const getBusinessFlowPreviewDefaults = (
   flow: BusinessFlowDefinition,
   dimensions: DimensionAccessibilityDiagnostic[],
 ): BusinessFlowPreviewDefaults => {
-  const previewRowDimensionName = getRecommendedRowDimensionName(flow, dimensions);
+  const previewRowDimensionName = getRecommendedRowDimensionName(
+    flow,
+    dimensions,
+  );
   const previewContextSelections = flow.recommendedContextDimensions.flatMap(
     (preference) => {
       const matchedDimension = getDimensionMatch(preference, dimensions, [
@@ -394,7 +400,8 @@ const getPreferredMemberName = (
         const semantic = getMemberSemanticDescriptor(member);
 
         return (
-          semantic.technicalName.toLowerCase() === preferredMember.toLowerCase() ||
+          semantic.technicalName.toLowerCase() ===
+            preferredMember.toLowerCase() ||
           semantic.displayLabel.toLowerCase() === preferredMember.toLowerCase()
         );
       });

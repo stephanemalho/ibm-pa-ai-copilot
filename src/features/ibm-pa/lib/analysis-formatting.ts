@@ -1,4 +1,7 @@
-import type { CubeComparatorRow, CubeDataPreviewRow } from "@/shared/types/ibm-pa";
+import type {
+  CubeComparatorRow,
+  CubeDataPreviewRow,
+} from "@/shared/types/ibm-pa";
 
 type InsightTone = "negative" | "neutral" | "positive";
 
@@ -76,7 +79,9 @@ const formatNumber = (
   }).format(value);
 };
 
-const getNumericValue = (value: boolean | null | number | string): number | null => {
+const getNumericValue = (
+  value: boolean | null | number | string,
+): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }

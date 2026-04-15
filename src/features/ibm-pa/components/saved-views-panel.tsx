@@ -33,7 +33,8 @@ const SavedViewsPanel = ({
     return savedViews
       .filter(
         (savedView) =>
-          savedView.cubeName === cubeName && savedView.serverName === serverName,
+          savedView.cubeName === cubeName &&
+          savedView.serverName === serverName,
       )
       .sort((leftValue, rightValue) =>
         rightValue.createdAt.localeCompare(leftValue.createdAt),
@@ -49,8 +50,8 @@ const SavedViewsPanel = ({
         <div className="space-y-1">
           <p className="text-sm font-semibold text-slate-950">Saved views</p>
           <p className="text-sm leading-6 text-slate-600">
-            Save and reopen a useful workspace state when you need to come
-            back to this cube.
+            Save and reopen a useful workspace state when you need to come back
+            to this cube.
           </p>
         </div>
 
@@ -123,7 +124,8 @@ const SavedViewsPanel = ({
                   href={getCubeWorkspaceHref({
                     analysisPanel: "preview",
                     cubeName: savedView.cubeName,
-                    previewContextSelections: savedView.previewContextSelections,
+                    previewContextSelections:
+                      savedView.previewContextSelections,
                     ...(savedView.previewRowDimensionName
                       ? {
                           previewRowDimensionName:
@@ -132,7 +134,8 @@ const SavedViewsPanel = ({
                       : {}),
                     ...(savedView.selectedDimensionName
                       ? {
-                          selectedDimensionName: savedView.selectedDimensionName,
+                          selectedDimensionName:
+                            savedView.selectedDimensionName,
                         }
                       : {}),
                     serverName: savedView.serverName,

@@ -62,13 +62,11 @@ const HomePage = async (): Promise<ReactNode> => {
 
           <div className="flex flex-wrap gap-3">
             <Button asChild size="lg">
-              <Link href={appRoutes.flows}>
-                Open business flows
-              </Link>
+              <Link href={appRoutes.flows}>Open business flows</Link>
             </Button>
             <Button asChild size="lg" variant="secondary">
-              <Link href={appRoutes.ibmServerAccess}>
-                Open diagnostics route
+              <Link href={appRoutes.ibmDataset}>
+                Afficher le dataset complet
               </Link>
             </Button>
           </div>

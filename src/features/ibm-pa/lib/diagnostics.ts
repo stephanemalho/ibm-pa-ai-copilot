@@ -186,7 +186,9 @@ const deriveCubeDiagnostics = (params: {
     Boolean(params.cube.uniqueName),
     Boolean(params.cube.lastSchemaUpdate),
     Boolean(params.cube.lastDataUpdate),
-    Boolean(params.cube.attributes && Object.keys(params.cube.attributes).length > 0),
+    Boolean(
+      params.cube.attributes && Object.keys(params.cube.attributes).length > 0,
+    ),
   ].filter(Boolean).length;
   const metadataRichnessStatus =
     metadataRichnessSignals >= 4
@@ -224,7 +226,10 @@ const deriveCubeDiagnostics = (params: {
             "Schema and data update metadata are not available for this cube.",
             "neutral",
           );
-  const semanticQualityStatus = mapSemanticQualityStatus(semantic.qualityLabel, semantic.quality);
+  const semanticQualityStatus = mapSemanticQualityStatus(
+    semantic.qualityLabel,
+    semantic.quality,
+  );
   const dimensionAccessStatus =
     params.dimensions === undefined
       ? createStatus(

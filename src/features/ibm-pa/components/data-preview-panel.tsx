@@ -37,10 +37,12 @@ type DataPreviewPanelProps = {
   cubeName: string;
   initialContextSelections?: WorkspacePreviewContextSelection[] | undefined;
   initialRowDimensionName?: string | undefined;
-  onStateChange?: ((value: {
-    previewContextSelections: WorkspacePreviewContextSelection[];
-    previewRowDimensionName?: string | undefined;
-  }) => void) | undefined;
+  onStateChange?:
+    | ((value: {
+        previewContextSelections: WorkspacePreviewContextSelection[];
+        previewRowDimensionName?: string | undefined;
+      }) => void)
+    | undefined;
   selectedDimensionName?: string | null | undefined;
   serverName: string;
 };
@@ -107,7 +109,9 @@ const DataPreviewPanel = ({
   });
   const accessibleDimensions = useMemo(() => {
     return previewDimensionsState.status === "success"
-      ? previewDimensionsState.dimensions.filter((dimension) => dimension.reachable)
+      ? previewDimensionsState.dimensions.filter(
+          (dimension) => dimension.reachable,
+        )
       : [];
   }, [previewDimensionsState]);
 
@@ -140,7 +144,8 @@ const DataPreviewPanel = ({
           return;
         }
 
-        const parsedPayload = dimensionAccessibilityResponseSchema.parse(payload);
+        const parsedPayload =
+          dimensionAccessibilityResponseSchema.parse(payload);
 
         if (!isActive) {
           return;
@@ -172,13 +177,17 @@ const DataPreviewPanel = ({
     };
   }, [cubeName, serverName]);
   const defaultRowDimensionName = useMemo(() => {
-    return getDefaultRowDimensionName(accessibleDimensions, selectedDimensionName);
+    return getDefaultRowDimensionName(
+      accessibleDimensions,
+      selectedDimensionName,
+    );
   }, [accessibleDimensions, selectedDimensionName]);
   const activeRowDimensionName = rowDimensionName ?? defaultRowDimensionName;
   const filterDimensions = useMemo(() => {
     return accessibleDimensions.filter(
       (dimension) =>
-        dimension.name !== activeRowDimensionName && dimension.members.length > 0,
+        dimension.name !== activeRowDimensionName &&
+        dimension.members.length > 0,
     );
   }, [accessibleDimensions, activeRowDimensionName]);
   const unconstrainedDimensions = useMemo(() => {
@@ -361,7 +370,10 @@ const DataPreviewPanel = ({
                       >
                         {accessibleDimensions.map((dimension) => (
                           <option key={dimension.name} value={dimension.name}>
-                            {getDimensionSemanticDescriptor(dimension).displayLabel}
+                            {
+                              getDimensionSemanticDescriptor(dimension)
+                                .displayLabel
+                            }
                           </option>
                         ))}
                       </Select>
@@ -408,8 +420,14 @@ const DataPreviewPanel = ({
                                   <option value="">No sample members</option>
                                 ) : (
                                   dimension.members.map((member) => (
-                                    <option key={member.uniqueName ?? member.name} value={member.name}>
-                                      {getMemberSemanticDescriptor(member).displayLabel}
+                                    <option
+                                      key={member.uniqueName ?? member.name}
+                                      value={member.name}
+                                    >
+                                      {
+                                        getMemberSemanticDescriptor(member)
+                                          .displayLabel
+                                      }
                                     </option>
                                   ))
                                 )}
@@ -443,7 +461,7 @@ const DataPreviewPanel = ({
                   </div>
                 </div>
 
-                    {unconstrainedDimensions.length > 0 ? (
+                {unconstrainedDimensions.length > 0 ? (
                   <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
                     <p className="text-sm font-medium text-slate-900">
                       Limited context
@@ -459,7 +477,10 @@ const DataPreviewPanel = ({
                           className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
                           key={dimension.name}
                         >
-                          {getDimensionSemanticDescriptor(dimension).displayLabel}
+                          {
+                            getDimensionSemanticDescriptor(dimension)
+                              .displayLabel
+                          }
                         </span>
                       ))}
                     </div>
@@ -553,7 +574,11 @@ const renderPreviewResult = (params: {
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-slate-700">
-                  {getDimensionSemanticDescriptor({ name: params.rowDimensionName }).displayLabel}
+                  {
+                    getDimensionSemanticDescriptor({
+                      name: params.rowDimensionName,
+                    }).displayLabel
+                  }
                 </th>
                 <th className="px-4 py-3 text-right font-semibold text-slate-700">
                   Value
@@ -595,8 +620,15 @@ const renderPreviewResult = (params: {
                 className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700"
                 key={`${filter.dimensionName}-${filter.memberName}`}
               >
-                {getDimensionSemanticDescriptor({ name: filter.dimensionName }).displayLabel}:{" "}
-                {getMemberSemanticDescriptor({ name: filter.memberName }).displayLabel}
+                {
+                  getDimensionSemanticDescriptor({ name: filter.dimensionName })
+                    .displayLabel
+                }
+                :{" "}
+                {
+                  getMemberSemanticDescriptor({ name: filter.memberName })
+                    .displayLabel
+                }
               </span>
             ))}
           </div>

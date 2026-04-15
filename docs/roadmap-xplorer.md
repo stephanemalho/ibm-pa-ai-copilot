@@ -1,6 +1,7 @@
 # Analytics Copilot Xplorer Roadmap
 
 ## Completed
+
 1. IBM foundation
 2. Cube Explorer
 3. Dimension Explorer
@@ -11,9 +12,11 @@
 8. Guided Business Flows
 
 ## Next
+
 9. Comparators
 
 ## Premium backlog
+
 10. KPI / Insight Cards
 11. Diagnostic consultant / admin
 12. Export / Sharing
@@ -21,7 +24,9 @@
 14. Targeted AI
 
 ## Product direction
+
 Xplorer focuses on:
+
 - explore
 - understand
 - compare
@@ -29,6 +34,7 @@ Xplorer focuses on:
 - explain
 
 Worker is a future separate action-oriented space for:
+
 - write-back
 - CRUD
 - controlled execution

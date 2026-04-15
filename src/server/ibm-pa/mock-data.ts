@@ -5,6 +5,11 @@ import type {
   CubeSampleMemberSet,
   CubeSummary,
   MdxQueryResult,
+  Tm1MappingEdge,
+  Tm1MappingNode,
+  Tm1MessageLogEntry,
+  Tm1MetadataMappingResult,
+  Tm1RecentMessageLogsResult,
   Tm1ServerSummary,
 } from "@/server/ibm-pa/types";
 
@@ -289,12 +294,179 @@ const mockMdxResult: MdxQueryResult = {
   serverName: MOCK_SERVER_ID,
 };
 
+const buildMockMessageLogEntries = (): Tm1MessageLogEntry[] => {
+  const now = Date.now();
+
+  return [
+    {
+      id: "5003",
+      level: "INFO",
+      logger: "TM1.Process",
+      message: "Process Bedrock.Server.Wait completed successfully.",
+      serverName: MOCK_SERVER_ID,
+      sessionId: "104",
+      threadId: "9103",
+      timestamp: new Date(now - 2 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "5002",
+      level: "WARNING",
+      logger: "TM1.Security",
+      message: "User Analyst attempted to access a secured object.",
+      serverName: MOCK_SERVER_ID,
+      sessionId: "103",
+      threadId: "9102",
+      timestamp: new Date(now - 6 * 60 * 1000).toISOString(),
+    },
+    {
+      id: "5001",
+      level: "ERROR",
+      logger: "TM1.Cube",
+      message: "View extraction failed for cube Plan_Budget.",
+      serverName: MOCK_SERVER_ID,
+      sessionId: "102",
+      threadId: "9101",
+      timestamp: new Date(now - 11 * 60 * 1000).toISOString(),
+    },
+  ];
+};
+
+const mockMessageLogEntries = buildMockMessageLogEntries();
+
+const mockMappingNodes: Tm1MappingNode[] = [
+  {
+    id: `server:${MOCK_SERVER_ID}`,
+    kind: "server",
+    label: "Planning Sample",
+    secondaryLabel: "TM1 server",
+    serverName: MOCK_SERVER_ID,
+  },
+  {
+    id: `cube:${MOCK_CUBE_NAME}`,
+    kind: "cube",
+    label: MOCK_CUBE_NAME,
+    secondaryLabel: "Primary planning cube",
+    serverName: MOCK_SERVER_ID,
+  },
+  {
+    id: "cube:Plan_Forecast",
+    kind: "cube",
+    label: "Plan_Forecast",
+    secondaryLabel: "Forecast planning cube",
+    serverName: MOCK_SERVER_ID,
+  },
+  {
+    id: "dimension:Version",
+    kind: "dimension",
+    label: "Version",
+    secondaryLabel: "Shared dimension",
+    serverName: MOCK_SERVER_ID,
+  },
+  {
+    id: "dimension:Account",
+    kind: "dimension",
+    label: "Account",
+    secondaryLabel: "Shared dimension",
+    serverName: MOCK_SERVER_ID,
+  },
+  {
+    id: "dimension:Month",
+    kind: "dimension",
+    label: "Month",
+    secondaryLabel: "Calendar dimension",
+    serverName: MOCK_SERVER_ID,
+  },
+  {
+    id: "process:Bedrock.Server.Wait",
+    kind: "process",
+    label: "Bedrock.Server.Wait",
+    secondaryLabel: "TI process",
+    serverName: MOCK_SERVER_ID,
+  },
+];
+
+const mockMappingEdges: Tm1MappingEdge[] = [
+  {
+    id: `edge:server:${MOCK_SERVER_ID}:cube:${MOCK_CUBE_NAME}`,
+    kind: "contains",
+    label: "contains",
+    source: `server:${MOCK_SERVER_ID}`,
+    target: `cube:${MOCK_CUBE_NAME}`,
+  },
+  {
+    id: "edge:server:mock-finance:cube:Plan_Forecast",
+    kind: "contains",
+    label: "contains",
+    source: `server:${MOCK_SERVER_ID}`,
+    target: "cube:Plan_Forecast",
+  },
+  {
+    id: `edge:cube:${MOCK_CUBE_NAME}:dimension:Version`,
+    kind: "uses",
+    label: "uses",
+    source: `cube:${MOCK_CUBE_NAME}`,
+    target: "dimension:Version",
+  },
+  {
+    id: `edge:cube:${MOCK_CUBE_NAME}:dimension:Account`,
+    kind: "uses",
+    label: "uses",
+    source: `cube:${MOCK_CUBE_NAME}`,
+    target: "dimension:Account",
+  },
+  {
+    id: `edge:cube:${MOCK_CUBE_NAME}:dimension:Month`,
+    kind: "uses",
+    label: "uses",
+    source: `cube:${MOCK_CUBE_NAME}`,
+    target: "dimension:Month",
+  },
+  {
+    id: "edge:process:Bedrock.Server.Wait:cube:Plan_Budget",
+    kind: "mentions",
+    label: "mentions",
+    source: "process:Bedrock.Server.Wait",
+    target: `cube:${MOCK_CUBE_NAME}`,
+  },
+];
+
+const mockMetadataMapping: Tm1MetadataMappingResult = {
+  edges: mockMappingEdges,
+  mode: "mock",
+  nodes: mockMappingNodes,
+  serverName: MOCK_SERVER_ID,
+  summary: {
+    cubeCount: 2,
+    dimensionCount: 3,
+    edgeCount: mockMappingEdges.length,
+    includesProcesses: true,
+    processCount: 1,
+  },
+};
+
+const mockRecentMessageLogs: Tm1RecentMessageLogsResult = {
+  cutoffTimestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+  entries: mockMessageLogEntries.slice(0, 2),
+  levels: ["ERROR", "INFO", "WARNING"],
+  limit: 100,
+  minutes: 10,
+  mode: "mock",
+  returnedEntryCount: 2,
+  scannedEntryCount: mockMessageLogEntries.length,
+  serverName: MOCK_SERVER_ID,
+};
+
 export {
   MOCK_CUBE_NAME,
   MOCK_SERVER_ID,
   mockCubeDimensions,
   mockCubeSampleMembers,
   mockCubes,
+  mockMappingEdges,
+  mockMappingNodes,
+  mockMessageLogEntries,
+  mockMetadataMapping,
   mockMdxResult,
+  mockRecentMessageLogs,
   mockTm1Servers,
 };

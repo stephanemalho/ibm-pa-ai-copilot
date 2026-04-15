@@ -67,7 +67,9 @@ const CubeDimensionsTable = ({
                       <p
                         className={cn(
                           "font-semibold",
-                          dimension.reachable ? "text-slate-950" : "text-slate-600",
+                          dimension.reachable
+                            ? "text-slate-950"
+                            : "text-slate-600",
                         )}
                       >
                         {semantic.displayLabel}
@@ -75,7 +77,9 @@ const CubeDimensionsTable = ({
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
                         {semantic.technicalName}
                       </p>
-                      <p className="text-xs text-slate-500">{semantic.semanticKind}</p>
+                      <p className="text-xs text-slate-500">
+                        {semantic.semanticKind}
+                      </p>
                     </div>
                   </BodyCell>
                   <BodyCell>
@@ -89,9 +93,7 @@ const CubeDimensionsTable = ({
                       reachable={dimension.reachable}
                     />
                   </BodyCell>
-                  <BodyCell>
-                    {semantic.qualityLabel}
-                  </BodyCell>
+                  <BodyCell>{semantic.qualityLabel}</BodyCell>
                   <BodyCell className="text-right">
                     {dimension.reachable ? (
                       <button

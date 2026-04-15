@@ -22,6 +22,24 @@ const dimensionDetailQuerySchema = z.object({
   server: z.string().trim().min(1),
 });
 
+const logsQuerySchema = z.object({
+  level: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(100),
+  minutes: z.coerce.number().int().min(1).max(180).default(10),
+  server: z.string().trim().min(1).optional(),
+});
+
+const mappingQuerySchema = z.object({
+  includeProcesses: z
+    .enum(["false", "true"])
+    .optional()
+    .transform((value) => {
+      return value === undefined ? true : value === "true";
+    }),
+  maxCubes: z.coerce.number().int().min(1).max(75).default(25),
+  server: z.string().trim().min(1).optional(),
+});
+
 const parseCubesQuery = (
   searchParams: URLSearchParams,
 ): z.infer<typeof cubesQuerySchema> => {
@@ -44,6 +62,18 @@ const parseDimensionDetailQuery = (
   );
 };
 
+const parseLogsQuery = (
+  searchParams: URLSearchParams,
+): z.infer<typeof logsQuerySchema> => {
+  return logsQuerySchema.parse(Object.fromEntries(searchParams.entries()));
+};
+
+const parseMappingQuery = (
+  searchParams: URLSearchParams,
+): z.infer<typeof mappingQuerySchema> => {
+  return mappingQuerySchema.parse(Object.fromEntries(searchParams.entries()));
+};
+
 const createIbmPaErrorPayload = (
   error: unknown,
 ): {
@@ -60,4 +90,6 @@ export {
   parseCubesQuery,
   parseDimensionDetailQuery,
   parseDimensionsQuery,
+  parseLogsQuery,
+  parseMappingQuery,
 };

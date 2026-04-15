@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -9,12 +11,14 @@ import {
 } from "@/components/ui/card";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
 import { CubeExplorer } from "@/features/ibm-pa/components/cube-explorer";
+import { DiagnosticBadge } from "@/features/ibm-pa/components/diagnostic-badge";
 import { ResourceHealthPanel } from "@/features/ibm-pa/components/resource-health-panel";
 import { deriveServerDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
 import {
   getCubeAccessibilityDiagnostics,
   getServerAccessibilityDiagnostics,
 } from "@/server/ibm-pa/client";
+import { getServerLogsRoute, getServerMappingRoute } from "@/shared/lib/routes";
 
 export const dynamic = "force-dynamic";
 
@@ -63,91 +67,134 @@ const ServerPage = async ({
   );
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-6 rounded-[2rem] border border-white/80 bg-white/80 p-8 shadow-panel backdrop-blur xl:grid-cols-[minmax(0,1.5fr)_minmax(22rem,0.8fr)] xl:p-10">
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
+    <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 overflow-x-hidden">
+      <div className="mx-auto w-full max-w-[2500px] px-6 sm:px-8">
+        <div className="space-y-8">
+          {!server.reachable ? (
+            <Card className="border-slate-200 bg-slate-50">
+              <CardHeader>
+                <CardTitle className="text-xl">Metadata unavailable</CardTitle>
+                <CardDescription>
+                  This TM1 server is visible to the tenant discovery endpoint,
+                  but it is not currently usable for cube and dimension
+                  exploration with this account.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <CubeExplorer
+              contextSidebar={
+                <ServerContextRail
+                  accessibleCubeCount={accessibleCubeCount}
+                  diagnostics={serverDiagnosticsSummary}
+                  serverName={serverName}
+                  server={server}
+                />
+              }
+              initialCubeName={initialCubeName}
+              initialCubes={cubeDiagnostics.cubes}
+              initialSearchTerm={initialSearchTerm}
+              serverName={serverName}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ServerContextRail = ({
+  accessibleCubeCount,
+  diagnostics,
+  serverName,
+  server,
+}: {
+  accessibleCubeCount: number;
+  diagnostics: ReturnType<typeof deriveServerDiagnostics>;
+  serverName: string;
+  server: Awaited<
+    ReturnType<typeof getServerAccessibilityDiagnostics>
+  >["servers"][number];
+}): ReactNode => {
+  return (
+    <>
+      <Card className="border-slate-200/80 bg-white/90">
+        <CardHeader className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
             <AccessStatusBadge
               classification={server.classification}
               reachable={server.reachable}
             />
+            <DiagnosticBadge status={diagnostics.usabilityStatus} />
+            <DiagnosticBadge status={diagnostics.semanticCoverageStatus} />
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
               Server explorer
             </span>
           </div>
 
-          <div className="space-y-3">
-            <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
+          <div className="space-y-2">
+            <CardTitle className="text-2xl tracking-tight text-slate-950">
               {server.name}
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-slate-600">
-              Browse cubes first, then inspect dimensions and member previews in
-              a read-only workflow tailored to this TM1 server.
-            </p>
+            </CardTitle>
+            <CardDescription className="leading-6">
+              Browse cubes, qualify metadata quality, and identify
+              visible-but-limited resources from one compact workspace.
+            </CardDescription>
           </div>
-        </div>
+        </CardHeader>
+      </Card>
 
-        <ResourceHealthPanel
-          badges={[
-            serverDiagnosticsSummary.accessStatus,
-            serverDiagnosticsSummary.usabilityStatus,
-            serverDiagnosticsSummary.semanticCoverageStatus,
-          ]}
-          description={serverDiagnosticsSummary.summaryMessage}
-          metrics={[
-            {
-              detail: server.message,
-              label: "Access status",
-              value: serverDiagnosticsSummary.accessStatus.label,
-            },
-            {
-              label: "Visible cubes",
-              value: serverDiagnosticsSummary.visibleCubeCount.toString(),
-            },
-            {
-              label: "Accessible cubes",
-              value: accessibleCubeCount.toString(),
-            },
-            {
-              detail: "Visible-only or weakly enriched cubes worth consultant review",
-              label: "Needs attention",
-              value: serverDiagnosticsSummary.limitedCubeCount.toString(),
-            },
-          ]}
-          title="Server diagnostics"
-        />
-      </section>
+      <ResourceHealthPanel
+        badges={[
+          diagnostics.accessStatus,
+          diagnostics.usabilityStatus,
+          diagnostics.semanticCoverageStatus,
+        ]}
+        description={diagnostics.summaryMessage}
+        metrics={[
+          {
+            detail: server.message,
+            label: "Access status",
+            value: diagnostics.accessStatus.label,
+          },
+          {
+            label: "Visible cubes",
+            value: diagnostics.visibleCubeCount.toString(),
+          },
+          {
+            label: "Accessible cubes",
+            value: accessibleCubeCount.toString(),
+          },
+          {
+            detail:
+              "Visible-only or weakly enriched cubes worth consultant review",
+            label: "Needs attention",
+            value: diagnostics.limitedCubeCount.toString(),
+          },
+        ]}
+        title="Server diagnostics"
+      />
 
-      {!server.reachable ? (
-        <Card className="border-slate-200 bg-slate-50">
-          <CardHeader>
-            <CardTitle className="text-xl">Metadata unavailable</CardTitle>
+      <Card className="border-slate-200/80 bg-white/90">
+        <CardHeader className="space-y-4">
+          <div className="space-y-2">
+            <CardTitle className="text-xl">Server tools</CardTitle>
             <CardDescription>
-              This TM1 server is visible to the tenant discovery endpoint, but
-              it is not currently usable for cube and dimension exploration with
-              this account.
+              Open logs and mapping only inside the current server context.
             </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : cubeDiagnostics.cubes.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">No cubes returned</CardTitle>
-            <CardDescription>
-              The server responded successfully, but no cubes were returned for
-              this account.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      ) : (
-        <CubeExplorer
-          initialCubeName={initialCubeName}
-          initialCubes={cubeDiagnostics.cubes}
-          initialSearchTerm={initialSearchTerm}
-          serverName={serverName}
-        />
-      )}
-    </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button asChild size="lg" variant="secondary">
+              <Link href={getServerLogsRoute(serverName)}>Open logs</Link>
+            </Button>
+            <Button asChild size="lg" variant="secondary">
+              <Link href={getServerMappingRoute(serverName)}>Open mapping</Link>
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+    </>
   );
 };
 

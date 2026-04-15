@@ -5,17 +5,20 @@ Date: 2026-04-02
 Purpose: keep a close reference of what semantic metadata is already available from IBM Planning Analytics / TM1 REST before implementing Step 6.
 
 Scope:
+
 - audit only
 - no Step 6 implementation
 - based on the current project integration plus a live probe on the open server `Seminaire`
 
 Important context:
+
 - `Seminaire` is open and was used for the live audit
 - `CXMD` and `CityzMedia` are closed, so failed requests on those servers are expected and should not be used as the semantic reference
 
 ## Summary
 
 IBM PA / TM1 already exposes useful semantic-friendly metadata through the REST API:
+
 - `Attributes`
 - `LocalizedAttributes`
 - `UniqueName`
@@ -23,6 +26,7 @@ IBM PA / TM1 already exposes useful semantic-friendly metadata through the REST 
 - member metadata such as `Type`, `Level`, `Ordinal`, `Weight`
 
 In the audited environment, `Caption` is already present inside `Attributes` for:
+
 - cubes
 - dimensions
 - hierarchies
@@ -32,6 +36,7 @@ In the audited environment, `Caption` is already present inside `Attributes` for
 That means Step 6 should not start from a manual dictionary only.
 
 Best strategy for this project:
+
 1. use IBM metadata first
 2. apply heuristic label fallback when metadata is missing
 3. add a small manual business dictionary only where needed
@@ -90,6 +95,7 @@ Current server-side integration uses only a small subset of TM1 metadata.
 ### Important consequence
 
 Today we mostly expose:
+
 - `Name`
 - `UniqueName` only in MDX preview
 - `FormattedValue` and raw `Value` for cell preview
@@ -99,6 +105,7 @@ We currently ignore most semantic metadata already available in TM1.
 ## Server-Level Metadata
 
 For TM1 server discovery, our code already parses:
+
 - `Name`
 - `ServerName`
 - `Description`
@@ -106,6 +113,7 @@ For TM1 server discovery, our code already parses:
 - `Default`
 
 Relevant code:
+
 - schema: [src/server/ibm-pa/schemas.ts](/Users/smalho/Desktop/ibm-pa-ai-copilot/src/server/ibm-pa/schemas.ts:14)
 - normalization: [src/server/ibm-pa/client.ts](/Users/smalho/Desktop/ibm-pa-ai-copilot/src/server/ibm-pa/client.ts:824)
 - description extraction: [src/server/ibm-pa/client.ts](/Users/smalho/Desktop/ibm-pa-ai-copilot/src/server/ibm-pa/client.ts:854)
@@ -131,6 +139,7 @@ Live audit on `Seminaire` found the following `Cube` properties:
 - `ViewStorageMinTime`
 
 Cube navigation properties found:
+
 - `Annotations`
 - `Dimensions`
 - `LocalizedAttributes`
@@ -143,9 +152,11 @@ Cube navigation properties found:
 ### Cube semantic findings
 
 Observed in live data:
+
 - `Attributes` includes `Caption`
 
 Useful automatically available fields for Step 6:
+
 - `Name`
 - `Attributes.Caption`
 - `LocalizedAttributes`
@@ -153,6 +164,7 @@ Useful automatically available fields for Step 6:
 - `LastDataUpdate`
 
 Not observed as top-level properties:
+
 - `Caption_Default`
 - `Description`
 - `CUBE_TYPE`
@@ -160,6 +172,7 @@ Not observed as top-level properties:
 ### Practical note
 
 There are also system cubes that strongly suggest built-in metadata support:
+
 - `}CubeAttributes`
 - `}CubeCaptions`
 - `}LocalizedCubeAttributes`
@@ -175,6 +188,7 @@ Live audit on `Seminaire` found the following `Dimension` properties:
 - `Locked`
 
 Dimension navigation properties found:
+
 - `DefaultHierarchy`
 - `Hierarchies`
 - `HierarchyAttributes`
@@ -183,9 +197,11 @@ Dimension navigation properties found:
 ### Dimension semantic findings
 
 Observed in live data:
+
 - `Attributes` includes `Caption`
 
 Useful automatically available fields for Step 6:
+
 - `Name`
 - `UniqueName`
 - `AllLeavesHierarchyName`
@@ -193,12 +209,14 @@ Useful automatically available fields for Step 6:
 - `LocalizedAttributes`
 
 Not observed as top-level properties:
+
 - `Description`
 - dedicated alias field as a first-class property
 
 ### Practical note
 
 Server-level system structures also show:
+
 - `}DimensionAttributes`
 - `}DimensionCaptions`
 - `}LocalizedDimensionAttributes`
@@ -223,6 +241,7 @@ Live audit on `Seminaire` found the following `Hierarchy` properties:
 - `ElementsSortType`
 
 Hierarchy navigation properties found:
+
 - `AllMember`
 - `DefaultMember`
 - `Dimension`
@@ -240,9 +259,11 @@ Hierarchy navigation properties found:
 ### Hierarchy semantic findings
 
 Observed in live data:
+
 - `Attributes` includes `Caption`
 
 Useful automatically available fields for Step 6:
+
 - `Name`
 - `UniqueName`
 - `Cardinality`
@@ -265,6 +286,7 @@ Live audit on `Seminaire` found the following `Element` properties:
 - `Locked`
 
 Element navigation properties found:
+
 - `Components`
 - `Edges`
 - `Hierarchy`
@@ -274,9 +296,11 @@ Element navigation properties found:
 ### Element semantic findings
 
 Observed in live data:
+
 - `Attributes` includes `Caption`
 
 Useful automatically available fields for Step 6:
+
 - `Name`
 - `UniqueName`
 - `Type`
@@ -288,6 +312,7 @@ Useful automatically available fields for Step 6:
 ### Practical note
 
 The server contains many system cubes of the form:
+
 - `}ElementAttributes_<dimension>`
 - `}ElementCaptions`
 - `}ElementCaptionsByDimension`
@@ -308,6 +333,7 @@ Live audit on `Seminaire` found the following `Member` properties:
 - `Attributes`
 
 Member navigation properties found:
+
 - `Children`
 - `Element`
 - `Hierarchy`
@@ -318,9 +344,11 @@ Member navigation properties found:
 ### Member semantic findings
 
 Observed in live data:
+
 - `Attributes` includes `Caption`
 
 Useful automatically available fields for Step 6:
+
 - `Name`
 - `UniqueName`
 - `Type`
@@ -333,6 +361,7 @@ Useful automatically available fields for Step 6:
 ## What Seems Absent
 
 Not observed as reliable top-level fields for business labeling:
+
 - `Caption_Default`
 - `Description` on cubes
 - `Description` on dimensions
@@ -344,6 +373,7 @@ These may exist through custom attributes or system cubes, but they were not obs
 ## What Can Be Derived Heuristically
 
 If semantic metadata is missing, the app can still derive a helpful fallback from:
+
 - technical names split on `_`
 - camel case splitting
 - removal or special treatment of `}` system object prefixes
@@ -351,6 +381,7 @@ If semantic metadata is missing, the app can still derive a helpful fallback fro
 - known naming conventions such as measure dimensions and time dimensions
 
 Examples:
+
 - `Budget Masse Salariale` is already business-friendly
 - `}CubeAttributes` is clearly technical and should be marked as system metadata
 - `DATA_CATALOG` can be humanized to `Data Catalog`
@@ -358,6 +389,7 @@ Examples:
 ## What Likely Needs A Manual Business Dictionary
 
 Even with TM1 captions, some business meaning will still need manual curation:
+
 - business definition of a cube
 - explanation of what a measure really means
 - preferred business naming when captions are inconsistent
@@ -365,6 +397,7 @@ Even with TM1 captions, some business meaning will still need manual curation:
 - business help text for end users
 
 Recommendation:
+
 - keep the manual dictionary small and targeted
 - use it as an override layer, not as the primary source
 
@@ -385,6 +418,7 @@ Best approach for this project:
    - add curated business descriptions and preferred labels only where useful
 
 In short:
+
 - not `manual only`
 - not `TM1 metadata only`
 - use `TM1 metadata + heuristic fallback + manual override`
@@ -396,12 +430,15 @@ These are the smallest useful enrichments to the current backend:
 ### Cubes
 
 Move from:
+
 - `/Cubes?$select=Name`
 
 Toward:
+
 - `/Cubes?$select=Name,Attributes,LastSchemaUpdate,LastDataUpdate`
 
 Primary fields to expose:
+
 - `name`
 - `caption`
 - `lastSchemaUpdate`
@@ -410,9 +447,11 @@ Primary fields to expose:
 ### Dimensions
 
 Add a targeted read such as:
+
 - `/Dimensions('<dimension>')?$select=Name,UniqueName,AllLeavesHierarchyName,Attributes`
 
 Primary fields to expose:
+
 - `name`
 - `caption`
 - `uniqueName`
@@ -421,9 +460,11 @@ Primary fields to expose:
 ### Hierarchies
 
 Add:
+
 - `/Hierarchies('<hierarchy>')?$select=Name,UniqueName,Cardinality,Structure,Visible,Attributes`
 
 Primary fields to expose:
+
 - `name`
 - `caption`
 - `uniqueName`
@@ -434,6 +475,7 @@ Primary fields to expose:
 ### Elements or members
 
 Enrich current member sample fetches with:
+
 - `Name`
 - `UniqueName`
 - `Type`
@@ -442,6 +484,7 @@ Enrich current member sample fetches with:
 - `Attributes`
 
 If using members:
+
 - `Ordinal`
 - `IsPlaceholder`
 - `Weight`
@@ -463,4 +506,5 @@ If using members:
   - `https://<adminserver>:5898/api/v1/$metadata`
 
 Note:
+
 - In this project, the live integration goes through the IBM tenant path and TM1 server path, not a direct Admin Server URL.

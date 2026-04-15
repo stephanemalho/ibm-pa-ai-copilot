@@ -43,7 +43,10 @@ const derivePreviewInsights = (
   if (topVisibleRow) {
     insights.push({
       id: "top-visible-row",
-      metric: formatMeasureValue(topVisibleRow.formattedValue, topVisibleRow.value),
+      metric: formatMeasureValue(
+        topVisibleRow.formattedValue,
+        topVisibleRow.value,
+      ),
       supportingText: "First visible row in the current preview",
       title: "Top visible row",
       tone: "neutral",
@@ -96,7 +99,9 @@ const deriveComparatorInsights = (
 
   const deltaRows = comparableRows.filter((row) => row.deltaValue !== null);
   const varianceRows = comparableRows.filter((row) => {
-    return row.variancePercentage !== null && Number.isFinite(row.variancePercentage);
+    return (
+      row.variancePercentage !== null && Number.isFinite(row.variancePercentage)
+    );
   });
   const allRowsAreStable = deltaRows.every((row) => {
     return row.deltaValue === null || Math.abs(row.deltaValue) < 0.001;
@@ -107,7 +112,8 @@ const deriveComparatorInsights = (
       {
         id: "stable-result",
         metric: "Stable result",
-        supportingText: "No meaningful delta detected across the current comparison",
+        supportingText:
+          "No meaningful delta detected across the current comparison",
         title: "Nothing significant found",
         tone: "neutral",
         valueLabel: `${formatCount(result.rows.length)} rows reviewed`,
@@ -119,7 +125,10 @@ const deriveComparatorInsights = (
   const largestPositiveRow = deltaRows
     .filter((row) => (row.deltaValue ?? 0) > 0)
     .reduce<CubeComparatorRow | null>((currentValue, row) => {
-      if (currentValue === null || (row.deltaValue ?? 0) > (currentValue.deltaValue ?? 0)) {
+      if (
+        currentValue === null ||
+        (row.deltaValue ?? 0) > (currentValue.deltaValue ?? 0)
+      ) {
         return row;
       }
 
@@ -128,14 +137,18 @@ const deriveComparatorInsights = (
   const largestNegativeRow = deltaRows
     .filter((row) => (row.deltaValue ?? 0) < 0)
     .reduce<CubeComparatorRow | null>((currentValue, row) => {
-      if (currentValue === null || (row.deltaValue ?? 0) < (currentValue.deltaValue ?? 0)) {
+      if (
+        currentValue === null ||
+        (row.deltaValue ?? 0) < (currentValue.deltaValue ?? 0)
+      ) {
         return row;
       }
 
       return currentValue;
     }, null);
   const strongestImpactRow = deltaRows.reduce((currentValue, row) => {
-    return Math.abs(row.deltaValue ?? 0) > Math.abs(currentValue.deltaValue ?? 0)
+    return Math.abs(row.deltaValue ?? 0) >
+      Math.abs(currentValue.deltaValue ?? 0)
       ? row
       : currentValue;
   });

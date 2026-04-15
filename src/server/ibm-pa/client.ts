@@ -10,7 +10,9 @@ import {
   mockCubeDimensions,
   mockCubeSampleMembers,
   mockCubes,
+  mockMetadataMapping,
   mockMdxResult,
+  mockRecentMessageLogs,
   mockTm1Servers,
 } from "@/server/ibm-pa/mock-data";
 import { requestIbmPaJson } from "@/server/ibm-pa/request";
@@ -33,8 +35,10 @@ import type {
   CubeSummary,
   DimensionAccessibilityDiagnostic,
   DimensionAccessibilityDiagnosticsResult,
-  GetDimensionAccessibilityDiagnosticParams,
   GetCubeDimensionsParams,
+  GetMetadataMappingParams,
+  GetRecentMessageLogsParams,
+  GetDimensionAccessibilityDiagnosticParams,
   GetCubeSampleMembersParams,
   IbmPaHealthStatus,
   ListCubesParams,
@@ -47,13 +51,27 @@ import type {
   Tm1AttributeMap,
   Tm1HierarchyMetadata,
   Tm1LocalizedAttributeMap,
+  Tm1MappingEdge,
+  Tm1MappingNode,
+  Tm1MessageLogEntry,
   Tm1Member,
+  Tm1MetadataMappingResult,
+  Tm1RecentMessageLogsResult,
   Tm1ServerAccessibilityDiagnostic,
   Tm1ServerAccessibilityDiagnosticsResult,
   Tm1ServerSummary,
 } from "@/server/ibm-pa/types";
 
 const diagnosticProbeConcurrency = 4;
+
+type Tm1ProcessDefinition = {
+  dataProcedure?: string;
+  epilogProcedure?: string;
+  metadataProcedure?: string;
+  name: string;
+  prologProcedure?: string;
+  serverName: string;
+};
 
 class IbmPaClient {
   public async getHealth(): Promise<IbmPaHealthStatus> {
@@ -240,7 +258,9 @@ class IbmPaClient {
             );
 
             return {
-              ...buildDimensionMetadata(dimension.dimensionName ?? dimension.name),
+              ...buildDimensionMetadata(
+                dimension.dimensionName ?? dimension.name,
+              ),
               kind: "dimension",
               classification: "accessible",
               cubeName: params.cubeName,
@@ -349,7 +369,9 @@ class IbmPaClient {
           )
           .map((dimension) => {
             return {
-              ...buildDimensionMetadata(dimension.dimensionName ?? dimension.name),
+              ...buildDimensionMetadata(
+                dimension.dimensionName ?? dimension.name,
+              ),
               kind: "dimension",
               classification: "accessible",
               cubeName: params.cubeName,
@@ -535,6 +557,258 @@ class IbmPaClient {
     };
   }
 
+  public async getRecentMessageLogs(
+    params: GetRecentMessageLogsParams = {},
+  ): Promise<Tm1RecentMessageLogsResult> {
+    const serverName = await this.resolveServerName(params.serverName);
+    const minutes = params.minutes ?? 10;
+    const limit = params.limit ?? 100;
+    const levelFilter = params.level?.trim().toUpperCase();
+    const cutoffDate = new Date(Date.now() - minutes * 60 * 1000);
+
+    if (getIbmPaMode() === "mock") {
+      const filteredEntries = mockRecentMessageLogs.entries.filter((entry) => {
+        if (!levelFilter) {
+          return true;
+        }
+
+        return entry.level.toUpperCase() === levelFilter;
+      });
+
+      return {
+        ...mockRecentMessageLogs,
+        ...(levelFilter
+          ? {
+              levelFilter,
+            }
+          : {}),
+        cutoffTimestamp: cutoffDate.toISOString(),
+        entries: filteredEntries.slice(0, limit),
+        limit,
+        minutes,
+        returnedEntryCount: Math.min(filteredEntries.length, limit),
+        scannedEntryCount: mockRecentMessageLogs.scannedEntryCount,
+        serverName,
+      };
+    }
+
+    const scanLimit = Math.min(Math.max(limit * 3, 100), 500);
+    const payload = await requestIbmPaJson({
+      path: `/MessageLogEntries?$select=ID,ThreadID,SessionID,Level,TimeStamp,Logger,Message&$orderby=TimeStamp desc&$top=${scanLimit}`,
+      scope: {
+        kind: "tm1",
+        serverName,
+      },
+    });
+    const items = extractCollectionItems(payload, "message log entries");
+    const normalizedEntries = items
+      .map((item) => normalizeMessageLogEntry(item, serverName))
+      .filter((entry): entry is Tm1MessageLogEntry => {
+        return entry !== null;
+      });
+    const filteredEntries = normalizedEntries.filter((entry) => {
+      const timestamp = Date.parse(entry.timestamp);
+
+      if (!Number.isFinite(timestamp) || timestamp < cutoffDate.getTime()) {
+        return false;
+      }
+
+      if (!levelFilter) {
+        return true;
+      }
+
+      return entry.level.toUpperCase() === levelFilter;
+    });
+
+    return {
+      ...(levelFilter
+        ? {
+            levelFilter,
+          }
+        : {}),
+      cutoffTimestamp: cutoffDate.toISOString(),
+      entries: filteredEntries.slice(0, limit),
+      levels: getUniqueLogLevels(normalizedEntries),
+      limit,
+      minutes,
+      mode: "live",
+      returnedEntryCount: Math.min(filteredEntries.length, limit),
+      scannedEntryCount: normalizedEntries.length,
+      serverName,
+    };
+  }
+
+  public async getMetadataMapping(
+    params: GetMetadataMappingParams = {},
+  ): Promise<Tm1MetadataMappingResult> {
+    const serverName = await this.resolveServerName(params.serverName);
+    const includeProcesses = params.includeProcesses ?? true;
+    const maxCubes = params.maxCubes ?? 25;
+
+    if (getIbmPaMode() === "mock") {
+      if (includeProcesses) {
+        return mockMetadataMapping;
+      }
+
+      return {
+        ...mockMetadataMapping,
+        edges: mockMetadataMapping.edges.filter(
+          (edge) => edge.kind !== "mentions",
+        ),
+        nodes: mockMetadataMapping.nodes.filter(
+          (node) => node.kind !== "process",
+        ),
+        summary: {
+          ...mockMetadataMapping.summary,
+          edgeCount: mockMetadataMapping.edges.filter(
+            (edge) => edge.kind !== "mentions",
+          ).length,
+          includesProcesses: false,
+          processCount: 0,
+        },
+      };
+    }
+
+    const cubesResult = await this.listCubes({
+      serverName,
+    });
+    const cubes = cubesResult.cubes.slice(0, maxCubes);
+    const dimensionResults = await Promise.all(
+      cubes.map(async (cube) => {
+        return this.getCubeDimensions({
+          cubeName: cube.name,
+          serverName,
+        });
+      }),
+    );
+
+    const nodes = new Map<string, Tm1MappingNode>();
+    const edges = new Map<string, Tm1MappingEdge>();
+    const serverNodeId = `server:${serverName}`;
+    const uniqueDimensionNames = new Set<string>();
+
+    nodes.set(serverNodeId, {
+      id: serverNodeId,
+      kind: "server",
+      label: serverName,
+      secondaryLabel: "TM1 server",
+      serverName,
+    });
+
+    for (const cube of cubes) {
+      const cubeNodeId = `cube:${cube.name}`;
+
+      nodes.set(cubeNodeId, {
+        id: cubeNodeId,
+        kind: "cube",
+        label: cube.name,
+        secondaryLabel: cube.caption ?? "Cube",
+        serverName,
+      });
+      edges.set(`edge:${serverNodeId}:${cubeNodeId}`, {
+        id: `edge:${serverNodeId}:${cubeNodeId}`,
+        kind: "contains",
+        label: "contains",
+        source: serverNodeId,
+        target: cubeNodeId,
+      });
+    }
+
+    for (const dimensionResult of dimensionResults) {
+      for (const dimension of dimensionResult.dimensions) {
+        const dimensionName = dimension.dimensionName ?? dimension.name;
+        const cubeNodeId = `cube:${dimension.cubeName}`;
+        const dimensionNodeId = `dimension:${dimensionName}`;
+
+        uniqueDimensionNames.add(dimensionName);
+        nodes.set(dimensionNodeId, {
+          id: dimensionNodeId,
+          kind: "dimension",
+          label: dimensionName,
+          secondaryLabel: dimension.hierarchyName ?? "Dimension",
+          serverName,
+        });
+        edges.set(`edge:${cubeNodeId}:${dimensionNodeId}`, {
+          id: `edge:${cubeNodeId}:${dimensionNodeId}`,
+          kind: "uses",
+          label: "uses",
+          source: cubeNodeId,
+          target: dimensionNodeId,
+        });
+      }
+    }
+
+    if (includeProcesses) {
+      const processes = await this.listProcesses(serverName);
+
+      for (const process of processes) {
+        const processReferences = collectProcessReferences(
+          process,
+          cubes,
+          uniqueDimensionNames,
+        );
+
+        if (
+          processReferences.cubes.size === 0 &&
+          processReferences.dimensions.size === 0
+        ) {
+          continue;
+        }
+
+        const processNodeId = `process:${process.name}`;
+        nodes.set(processNodeId, {
+          id: processNodeId,
+          kind: "process",
+          label: process.name,
+          secondaryLabel: "TI process",
+          serverName,
+        });
+
+        for (const cubeName of processReferences.cubes) {
+          const cubeNodeId = `cube:${cubeName}`;
+          edges.set(`edge:${processNodeId}:${cubeNodeId}`, {
+            id: `edge:${processNodeId}:${cubeNodeId}`,
+            kind: "mentions",
+            label: "mentions cube",
+            source: processNodeId,
+            target: cubeNodeId,
+          });
+        }
+
+        for (const dimensionName of processReferences.dimensions) {
+          const dimensionNodeId = `dimension:${dimensionName}`;
+          edges.set(`edge:${processNodeId}:${dimensionNodeId}`, {
+            id: `edge:${processNodeId}:${dimensionNodeId}`,
+            kind: "mentions",
+            label: "mentions dimension",
+            source: processNodeId,
+            target: dimensionNodeId,
+          });
+        }
+      }
+    }
+
+    const nodeList = Array.from(nodes.values()).sort(compareMappingNodes);
+    const edgeList = Array.from(edges.values()).sort((left, right) => {
+      return left.id.localeCompare(right.id);
+    });
+
+    return {
+      edges: edgeList,
+      mode: "live",
+      nodes: nodeList,
+      serverName,
+      summary: {
+        cubeCount: nodeList.filter((node) => node.kind === "cube").length,
+        dimensionCount: nodeList.filter((node) => node.kind === "dimension")
+          .length,
+        edgeCount: edgeList.length,
+        includesProcesses: includeProcesses,
+        processCount: nodeList.filter((node) => node.kind === "process").length,
+      },
+    };
+  }
+
   public async getDimensionAccessibilityDiagnostic(
     params: GetDimensionAccessibilityDiagnosticParams,
   ): Promise<DimensionAccessibilityDiagnostic> {
@@ -577,7 +851,9 @@ class IbmPaClient {
         dimensionName: params.dimensionName,
         ...(matchingDimension.hierarchyName
           ? {
-              hierarchy: buildHierarchyMetadata(matchingDimension.hierarchyName),
+              hierarchy: buildHierarchyMetadata(
+                matchingDimension.hierarchyName,
+              ),
               hierarchyName: matchingDimension.hierarchyName,
             }
           : {}),
@@ -593,14 +869,13 @@ class IbmPaClient {
       cubeName: params.cubeName,
       serverName,
     });
-    const matchingDimension =
-      dimensionsResult.dimensions.find(
-        (dimension) => dimension.dimensionName === params.dimensionName,
-      ) ?? {
-        ...buildDimensionMetadata(params.dimensionName),
-        cubeName: params.cubeName,
-        serverName,
-      };
+    const matchingDimension = dimensionsResult.dimensions.find(
+      (dimension) => dimension.dimensionName === params.dimensionName,
+    ) ?? {
+      ...buildDimensionMetadata(params.dimensionName),
+      cubeName: params.cubeName,
+      serverName,
+    };
 
     return this.getSingleDimensionAccessibilityDiagnostic({
       cubeName: params.cubeName,
@@ -690,6 +965,25 @@ class IbmPaClient {
     return normalizeHierarchyMetadata(primaryHierarchy, dimensionName);
   }
 
+  private async listProcesses(
+    serverName: string,
+  ): Promise<Tm1ProcessDefinition[]> {
+    const payload = await requestIbmPaJson({
+      path: "/Processes?$select=Name,PrologProcedure,MetadataProcedure,DataProcedure,EpilogProcedure&$top=200",
+      scope: {
+        kind: "tm1",
+        serverName,
+      },
+    });
+    const items = extractCollectionItems(payload, "processes");
+
+    return items
+      .map((item) => normalizeProcessDefinition(item, serverName))
+      .filter((process): process is Tm1ProcessDefinition => {
+        return process !== null;
+      });
+  }
+
   private async getSingleServerAccessibilityDiagnostic(
     serverName: string,
   ): Promise<Tm1ServerAccessibilityDiagnostic> {
@@ -731,8 +1025,8 @@ class IbmPaClient {
       return {
         ...cube,
         ...classifyResourceAccessibilityError({
-        error,
-        kind: "cube",
+          error,
+          kind: "cube",
           name: cube.name,
           serverName: cube.serverName,
         }),
@@ -839,11 +1133,46 @@ class IbmPaClient {
     }
 
     const serversResult = await this.listTm1Servers();
-    const defaultServer = serversResult.servers.find(
-      (candidate) => candidate.isDefault,
-    );
+    const prioritizedServers = [
+      ...serversResult.servers.filter((candidate) => candidate.isDefault),
+      ...serversResult.servers.filter((candidate) => !candidate.isDefault),
+    ];
 
-    return defaultServer?.id ?? serversResult.servers[0]?.id ?? MOCK_SERVER_ID;
+    for (const candidate of prioritizedServers) {
+      if (await this.isServerMetadataReachable(candidate.id)) {
+        return candidate.id;
+      }
+    }
+
+    return prioritizedServers[0]?.id ?? MOCK_SERVER_ID;
+  }
+
+  private async isServerMetadataReachable(
+    serverName: string,
+  ): Promise<boolean> {
+    try {
+      await requestIbmPaJson({
+        path: "/Cubes?$select=Name&$top=1",
+        scope: {
+          kind: "tm1",
+          serverName,
+        },
+      });
+
+      return true;
+    } catch (error) {
+      logIbmPaInfo("Skipping TM1 server that is not reachable for metadata.", {
+        operation: "resolveServerName",
+        serverName,
+        ...(isIbmPaError(error)
+          ? {
+              statusCode: error.statusCode,
+            }
+          : {}),
+      });
+
+      return false;
+    }
   }
 }
 
@@ -1023,6 +1352,73 @@ const normalizeMember = (item: Record<string, unknown>): Tm1Member => {
   };
 };
 
+const normalizeMessageLogEntry = (
+  item: Record<string, unknown>,
+  serverName: string,
+): Tm1MessageLogEntry | null => {
+  const timestamp = getOptionalString(item, ["TimeStamp", "Timestamp"]);
+  const message = getOptionalString(item, ["Message"]);
+  const level = getOptionalString(item, ["Level"]) ?? "Unknown";
+  const logger = getOptionalString(item, ["Logger"]) ?? "TM1";
+
+  if (!timestamp || !message) {
+    return null;
+  }
+
+  return {
+    id:
+      getOptionalIdentifier(item, ["ID"]) ??
+      `${serverName}:${timestamp}:${level}`,
+    level,
+    logger,
+    message,
+    serverName,
+    sessionId: getOptionalIdentifier(item, ["SessionID"]),
+    threadId: getOptionalIdentifier(item, ["ThreadID"]),
+    timestamp,
+  };
+};
+
+const normalizeProcessDefinition = (
+  item: Record<string, unknown>,
+  serverName: string,
+): Tm1ProcessDefinition | null => {
+  const name = getOptionalString(item, ["Name"]);
+  const dataProcedure = getOptionalString(item, ["DataProcedure"]);
+  const epilogProcedure = getOptionalString(item, ["EpilogProcedure"]);
+  const metadataProcedure = getOptionalString(item, ["MetadataProcedure"]);
+  const prologProcedure = getOptionalString(item, ["PrologProcedure"]);
+
+  if (!name) {
+    return null;
+  }
+
+  return {
+    name,
+    serverName,
+    ...(dataProcedure
+      ? {
+          dataProcedure,
+        }
+      : {}),
+    ...(epilogProcedure
+      ? {
+          epilogProcedure,
+        }
+      : {}),
+    ...(metadataProcedure
+      ? {
+          metadataProcedure,
+        }
+      : {}),
+    ...(prologProcedure
+      ? {
+          prologProcedure,
+        }
+      : {}),
+  };
+};
+
 const buildDimensionMetadata = (
   dimensionName: string,
 ): Pick<
@@ -1096,13 +1492,13 @@ const extractLocalizedAttributeMapCollection = (
   value: unknown,
 ): Tm1LocalizedAttributeMap => {
   if (Array.isArray(value)) {
-    return value
-      .filter(isRecord)
-      .map((entry) => extractAttributeMap(entry));
+    return value.filter(isRecord).map((entry) => extractAttributeMap(entry));
   }
 
   if (isRecord(value) && Array.isArray(value.value)) {
-    return value.value.filter(isRecord).map((entry) => extractAttributeMap(entry));
+    return value.value
+      .filter(isRecord)
+      .map((entry) => extractAttributeMap(entry));
   }
 
   return [];
@@ -1177,6 +1573,25 @@ const getOptionalString = (
   return undefined;
 };
 
+const getOptionalIdentifier = (
+  item: Record<string, unknown>,
+  keys: string[],
+): string | undefined => {
+  for (const key of keys) {
+    const value = item[key];
+
+    if (typeof value === "number") {
+      return value.toString();
+    }
+
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
 const getOptionalNumber = (
   item: Record<string, unknown>,
   keys: string[],
@@ -1226,8 +1641,100 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 };
 
+const getUniqueLogLevels = (entries: Tm1MessageLogEntry[]): string[] => {
+  return Array.from(
+    new Set(
+      entries.map((entry) => {
+        return entry.level.toUpperCase();
+      }),
+    ),
+  ).sort((left, right) => left.localeCompare(right));
+};
+
+const collectProcessReferences = (
+  process: Tm1ProcessDefinition,
+  cubes: CubeSummary[],
+  dimensionNames: Set<string>,
+): {
+  cubes: Set<string>;
+  dimensions: Set<string>;
+} => {
+  const script = [
+    process.prologProcedure,
+    process.metadataProcedure,
+    process.dataProcedure,
+    process.epilogProcedure,
+  ]
+    .filter((value): value is string => {
+      return typeof value === "string" && value.trim().length > 0;
+    })
+    .join("\n")
+    .toLowerCase();
+  const referencedCubes = new Set<string>();
+  const referencedDimensions = new Set<string>();
+
+  if (!script) {
+    return {
+      cubes: referencedCubes,
+      dimensions: referencedDimensions,
+    };
+  }
+
+  for (const cube of cubes) {
+    if (scriptMentionsIdentifier(script, cube.name)) {
+      referencedCubes.add(cube.name);
+    }
+  }
+
+  for (const dimensionName of dimensionNames) {
+    if (scriptMentionsIdentifier(script, dimensionName)) {
+      referencedDimensions.add(dimensionName);
+    }
+  }
+
+  return {
+    cubes: referencedCubes,
+    dimensions: referencedDimensions,
+  };
+};
+
+const scriptMentionsIdentifier = (
+  source: string,
+  candidate: string,
+): boolean => {
+  const normalizedCandidate = candidate.toLowerCase();
+  const escapedCandidate = escapeRegExp(normalizedCandidate);
+  const exactPattern = new RegExp(
+    `(?:'|\"|\\b)${escapedCandidate}(?:'|\"|\\b)`,
+    "i",
+  );
+
+  return exactPattern.test(source);
+};
+
+const compareMappingNodes = (
+  left: Tm1MappingNode,
+  right: Tm1MappingNode,
+): number => {
+  const kindOrder: Record<Tm1MappingNode["kind"], number> = {
+    server: 0,
+    cube: 1,
+    dimension: 2,
+    process: 3,
+  };
+
+  return (
+    kindOrder[left.kind] - kindOrder[right.kind] ||
+    left.label.localeCompare(right.label)
+  );
+};
+
 const escapeODataStringLiteral = (value: string): string => {
   return encodeURIComponent(value.replaceAll("'", "''"));
+};
+
+const escapeRegExp = (value: string): string => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
 const mapWithConcurrency = async <TInput, TOutput>(
@@ -1333,6 +1840,18 @@ const getDimensionAccessibilityDiagnostic = (
 
 const runMdx = (params: RunMdxParams): Promise<MdxQueryResult> => {
   return ibmPaClient.runMdx(params);
+};
+
+const getRecentMessageLogs = (
+  params?: GetRecentMessageLogsParams,
+): Promise<Tm1RecentMessageLogsResult> => {
+  return ibmPaClient.getRecentMessageLogs(params);
+};
+
+const getMetadataMapping = (
+  params?: GetMetadataMappingParams,
+): Promise<Tm1MetadataMappingResult> => {
+  return ibmPaClient.getMetadataMapping(params);
 };
 
 const classifyServerAccessibilityError = (
@@ -1467,6 +1986,8 @@ export {
   getDimensionAccessibilityDiagnostics,
   getHealth,
   getIbmPaClient,
+  getMetadataMapping,
+  getRecentMessageLogs,
   getServerAccessibilityDiagnostics,
   listCubes,
   listTm1Servers,

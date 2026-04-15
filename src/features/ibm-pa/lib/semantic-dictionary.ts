@@ -36,19 +36,22 @@ const manualSemanticDictionary: ManualSemanticDictionary = {
       businessLabel: "Plan Version",
       description: "Planning versions such as Actual, Budget, and Forecast.",
       semanticKind: "Version",
-      usageHint: "Use this dimension to compare actuals and planning scenarios.",
+      usageHint:
+        "Use this dimension to compare actuals and planning scenarios.",
     },
     Month: {
       businessLabel: "Month",
       description: "Monthly time buckets used in planning and reporting.",
       semanticKind: "Time",
-      usageHint: "Use this dimension to navigate periods and reporting cadence.",
+      usageHint:
+        "Use this dimension to navigate periods and reporting cadence.",
     },
     Account: {
       businessLabel: "Account",
       description: "Measures and financial account lines used in analysis.",
       semanticKind: "Measure",
-      usageHint: "Use this dimension to select the financial metric to analyze.",
+      usageHint:
+        "Use this dimension to select the financial metric to analyze.",
     },
     Currency: {
       businessLabel: "Currency",

@@ -90,7 +90,11 @@ const useWorkspacePersistence = () => {
   }, []);
 
   const updateState = useCallback(
-    (updater: (currentValue: WorkspacePersistenceState) => WorkspacePersistenceState) => {
+    (
+      updater: (
+        currentValue: WorkspacePersistenceState,
+      ) => WorkspacePersistenceState,
+    ) => {
       const nextState = updater(readWorkspacePersistenceState());
 
       writeWorkspacePersistenceState(nextState);

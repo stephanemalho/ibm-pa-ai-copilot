@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { DiagnosticBadge } from "@/features/ibm-pa/components/diagnostic-badge";
 import type { DiagnosticStatus } from "@/features/ibm-pa/lib/diagnostics";
 
@@ -26,7 +32,10 @@ const ResourceHealthPanel = ({
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           {(badges ?? []).map((badge) => (
-            <DiagnosticBadge key={`${badge.label}-${badge.tone}`} status={badge} />
+            <DiagnosticBadge
+              key={`${badge.label}-${badge.tone}`}
+              status={badge}
+            />
           ))}
         </div>
         <div className="space-y-1">
@@ -47,7 +56,9 @@ const ResourceHealthPanel = ({
               {metric.value}
             </p>
             {metric.detail ? (
-              <p className="mt-1 text-xs leading-5 text-slate-500">{metric.detail}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                {metric.detail}
+              </p>
             ) : null}
           </div>
         ))}

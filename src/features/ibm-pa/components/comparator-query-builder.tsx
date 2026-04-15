@@ -146,7 +146,9 @@ const ComparatorQueryBuilder = ({
             {contextDimensions.map((dimension) => {
               const semantic = getDimensionSemanticDescriptor(dimension);
               const selectedMember =
-                contextSelections[dimension.name] ?? dimension.members[0]?.name ?? "";
+                contextSelections[dimension.name] ??
+                dimension.members[0]?.name ??
+                "";
 
               return (
                 <Field
@@ -156,7 +158,10 @@ const ComparatorQueryBuilder = ({
                   <Select
                     disabled={dimension.members.length === 0}
                     onChange={(event) => {
-                      onContextSelectionChange(dimension.name, event.target.value);
+                      onContextSelectionChange(
+                        dimension.name,
+                        event.target.value,
+                      );
                     }}
                     value={selectedMember}
                   >
@@ -182,23 +187,27 @@ const ComparatorQueryBuilder = ({
             <p>
               Comparing{" "}
               <span className="font-medium text-slate-950">
-                {getMemberSemanticDescriptor(
-                  comparisonDimension.members.find(
-                    (member) => member.name === selectedBaseMemberName,
-                  ) ?? {
-                    name: selectedBaseMemberName,
-                  },
-                ).displayLabel}
+                {
+                  getMemberSemanticDescriptor(
+                    comparisonDimension.members.find(
+                      (member) => member.name === selectedBaseMemberName,
+                    ) ?? {
+                      name: selectedBaseMemberName,
+                    },
+                  ).displayLabel
+                }
               </span>{" "}
               against{" "}
               <span className="font-medium text-slate-950">
-                {getMemberSemanticDescriptor(
-                  comparisonDimension.members.find(
-                    (member) => member.name === selectedCompareMemberName,
-                  ) ?? {
-                    name: selectedCompareMemberName,
-                  },
-                ).displayLabel}
+                {
+                  getMemberSemanticDescriptor(
+                    comparisonDimension.members.find(
+                      (member) => member.name === selectedCompareMemberName,
+                    ) ?? {
+                      name: selectedCompareMemberName,
+                    },
+                  ).displayLabel
+                }
               </span>
             </p>
           ) : (

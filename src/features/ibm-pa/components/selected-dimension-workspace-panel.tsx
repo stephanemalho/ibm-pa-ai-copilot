@@ -2,7 +2,13 @@
 
 import type { ReactNode } from "react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { AccessStatusBadge } from "@/features/ibm-pa/components/access-status-badge";
 import { DiagnosticBadge } from "@/features/ibm-pa/components/diagnostic-badge";
 import { deriveDimensionDiagnostics } from "@/features/ibm-pa/lib/diagnostics";
@@ -124,10 +130,7 @@ const renderPanelContent = (params: {
 
   if (!dimension.reachable) {
     return (
-      <InaccessibleState
-        cubeName={params.cube.name}
-        dimension={dimension}
-      />
+      <InaccessibleState cubeName={params.cube.name} dimension={dimension} />
     );
   }
 
@@ -150,10 +153,17 @@ const renderPanelContent = (params: {
       <div className="grid gap-3 sm:grid-cols-2">
         <Metric
           label="Hierarchy"
-          value={dimension.hierarchy?.caption ?? dimension.hierarchyName ?? "Primary hierarchy"}
+          value={
+            dimension.hierarchy?.caption ??
+            dimension.hierarchyName ??
+            "Primary hierarchy"
+          }
         />
         <Metric label="Semantic kind" value={semantic.semanticKind} />
-        <Metric label="Preview readiness" value={diagnostics.previewReadinessStatus.label} />
+        <Metric
+          label="Preview readiness"
+          value={diagnostics.previewReadinessStatus.label}
+        />
         <Metric
           label="Comparison readiness"
           value={diagnostics.comparisonReadinessStatus.label}
@@ -166,9 +176,18 @@ const renderPanelContent = (params: {
           label="Hierarchy cardinality"
           value={dimension.hierarchy?.cardinality?.toString() ?? "N/A"}
         />
-        <Metric label="Member preview" value={diagnostics.memberPreviewStatus.label} />
-        <Metric label="Visible sample members" value={dimension.members.length.toString()} />
-        <Metric label="Cube" value={getCubeSemanticDescriptor(params.cube).displayLabel} />
+        <Metric
+          label="Member preview"
+          value={diagnostics.memberPreviewStatus.label}
+        />
+        <Metric
+          label="Visible sample members"
+          value={dimension.members.length.toString()}
+        />
+        <Metric
+          label="Cube"
+          value={getCubeSemanticDescriptor(params.cube).displayLabel}
+        />
         <Metric label="Server" value={params.cube.serverName} />
         <Metric label="Semantic source" value={semantic.sourceLabel} />
         <Metric label="Semantic quality" value={semantic.qualityLabel} />
@@ -183,11 +202,15 @@ const renderPanelContent = (params: {
       </div>
 
       <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-        <p className="text-sm font-medium text-slate-900">{semantic.displayLabel}</p>
+        <p className="text-sm font-medium text-slate-900">
+          {semantic.displayLabel}
+        </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           {semantic.description}
         </p>
-        <p className="mt-2 text-sm leading-6 text-slate-500">{semantic.usageHint}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          {semantic.usageHint}
+        </p>
         <div className="mt-4 space-y-2 rounded-[1rem] border border-slate-200 bg-white p-4 text-xs text-slate-500">
           <p>Technical name: {semantic.technicalName}</p>
           <p>Unique name: {semantic.uniqueName}</p>
@@ -332,13 +355,16 @@ const InaccessibleState = ({
         Access limited
       </p>
       <div className="space-y-2">
-        <p className="text-base font-semibold text-slate-950">{semantic.displayLabel}</p>
+        <p className="text-base font-semibold text-slate-950">
+          {semantic.displayLabel}
+        </p>
         <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
           {semantic.technicalName}
         </p>
         <p className="text-sm leading-6 text-slate-600">
-          This dimension remains visible in <span className="font-medium">{cubeName}</span>
-          , but its detailed metadata cannot be opened with the current access.
+          This dimension remains visible in{" "}
+          <span className="font-medium">{cubeName}</span>, but its detailed
+          metadata cannot be opened with the current access.
         </p>
       </div>
       <p className="text-sm leading-6 text-slate-500">{dimension.message}</p>

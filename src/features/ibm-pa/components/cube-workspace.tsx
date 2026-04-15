@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AnalysisPanelSwitcher } from "@/features/ibm-pa/components/analysis-panel-switcher";
@@ -46,7 +52,10 @@ type CubeWorkspaceProps = {
   cube: CubeAccessibilityDiagnostic;
   fromSearch?: string | undefined;
   initialDimensions: CubeDimensionStructureDiagnostic[];
-  initialSelectedDimension?: DimensionAccessibilityDiagnostic | null | undefined;
+  initialSelectedDimension?:
+    | DimensionAccessibilityDiagnostic
+    | null
+    | undefined;
 };
 
 const dimensionSampleSize = 24;
@@ -81,7 +90,8 @@ const CubeWorkspace = ({
   const activeAnalysisPanel: CubeWorkspaceAnalysisPanel =
     analysisPanelFromUrl === "compare" ? "compare" : "preview";
   const comparatorRowDimensionFromUrl = searchParams.get("compareRow");
-  const comparatorComparisonDimensionFromUrl = searchParams.get("compareDimension");
+  const comparatorComparisonDimensionFromUrl =
+    searchParams.get("compareDimension");
   const comparatorBaseMemberFromUrl = searchParams.get("compareBase");
   const comparatorCompareMemberFromUrl = searchParams.get("compareTarget");
   const comparatorContextFromUrl = searchParams.get("compareContext");
@@ -104,7 +114,9 @@ const CubeWorkspace = ({
     previewRowDimensionFromUrl ??
     businessFlowPreviewDefaults?.previewRowDimensionName;
   const defaultDimensionName = useMemo(() => {
-    return initialDimensions.find((dimension) => dimension.reachable)?.name ?? null;
+    return (
+      initialDimensions.find((dimension) => dimension.reachable)?.name ?? null
+    );
   }, [initialDimensions]);
   const selectedDimensionName =
     selectedDimensionFromUrl ??
@@ -167,15 +179,16 @@ const CubeWorkspace = ({
       value: previewUrlState,
     };
   });
-  const [comparatorBuilderStateStore, setComparatorBuilderStateStore] = useState<{
-    seed: string;
-    value: ComparatorBuilderState;
-  }>(() => {
-    return {
-      seed: comparatorStateSeed,
-      value: comparatorUrlState,
-    };
-  });
+  const [comparatorBuilderStateStore, setComparatorBuilderStateStore] =
+    useState<{
+      seed: string;
+      value: ComparatorBuilderState;
+    }>(() => {
+      return {
+        seed: comparatorStateSeed,
+        value: comparatorUrlState,
+      };
+    });
   const previewBuilderState =
     previewBuilderStateStore.seed === previewStateSeed
       ? previewBuilderStateStore.value
@@ -201,12 +214,7 @@ const CubeWorkspace = ({
       selectedDimensionName ?? "no-dimension",
       comparatorStateSeed,
     ].join(":");
-  }, [
-    comparatorStateSeed,
-    cube.name,
-    cube.serverName,
-    selectedDimensionName,
-  ]);
+  }, [comparatorStateSeed, cube.name, cube.serverName, selectedDimensionName]);
   const handlePreviewStateChange = useCallback(
     (value: PreviewBuilderState) => {
       setPreviewBuilderStateStore({
@@ -247,7 +255,9 @@ const CubeWorkspace = ({
         previewContextSelections: previewBuilderState.previewContextSelections,
         previewRowDimensionName: previewBuilderState.previewRowDimensionName,
         selectedDimensionName:
-          overrides?.selectedDimensionName ?? selectedDimensionName ?? undefined,
+          overrides?.selectedDimensionName ??
+          selectedDimensionName ??
+          undefined,
         fromSearch,
         serverName: cube.serverName,
       });
@@ -270,8 +280,9 @@ const CubeWorkspace = ({
     }
 
     return (
-      initialDimensions.find((dimension) => dimension.name === selectedDimensionName) ??
-      null
+      initialDimensions.find(
+        (dimension) => dimension.name === selectedDimensionName,
+      ) ?? null
     );
   }, [initialDimensions, selectedDimensionName]);
   const [detailState, setDetailState] = useState<DimensionDetailState>(() => {
@@ -369,7 +380,8 @@ const CubeWorkspace = ({
         analysisPanel: activeAnalysisPanel,
         businessFlowId,
         comparatorBaseMemberName: comparatorBaseMemberFromUrl ?? undefined,
-        comparatorCompareMemberName: comparatorCompareMemberFromUrl ?? undefined,
+        comparatorCompareMemberName:
+          comparatorCompareMemberFromUrl ?? undefined,
         comparatorComparisonDimensionName:
           comparatorComparisonDimensionFromUrl ?? undefined,
         comparatorContextSelections:
@@ -619,7 +631,9 @@ const CubeWorkspace = ({
 
             <DataPreviewPanel
               cubeName={cube.name}
-              initialContextSelections={previewBuilderState.previewContextSelections}
+              initialContextSelections={
+                previewBuilderState.previewContextSelections
+              }
               initialRowDimensionName={
                 previewBuilderState.previewRowDimensionName
               }
@@ -635,7 +649,9 @@ const CubeWorkspace = ({
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
                 Active panel
               </p>
-              <h3 className="text-xl font-semibold text-slate-950">Comparator</h3>
+              <h3 className="text-xl font-semibold text-slate-950">
+                Comparator
+              </h3>
               <p className="text-sm leading-6 text-slate-600">
                 Build a read-only A versus B comparison by keeping one business
                 dimension variable and the rest fixed as context.

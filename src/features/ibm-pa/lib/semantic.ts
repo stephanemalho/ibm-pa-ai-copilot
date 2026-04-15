@@ -65,8 +65,7 @@ const getCubeSemanticDescriptor = (
 
 const getDimensionSemanticDescriptor = (
   dimension: Pick<
-    | CubeDimensionStructureDiagnostic
-    | DimensionAccessibilityDiagnostic,
+    CubeDimensionStructureDiagnostic | DimensionAccessibilityDiagnostic,
     "attributes" | "caption" | "localizedAttributes" | "name" | "uniqueName"
   >,
 ): SemanticDescriptor => {
@@ -187,7 +186,8 @@ const resolveCaptionFromAttributes = (
 
   for (const [attributeName, attributeValue] of Object.entries(attributes)) {
     const normalizedAttributeName =
-      attributeName.split(".").at(-1)?.toLowerCase() ?? attributeName.toLowerCase();
+      attributeName.split(".").at(-1)?.toLowerCase() ??
+      attributeName.toLowerCase();
 
     if (
       normalizedAttributeName === "caption" ||
@@ -300,7 +300,11 @@ const inferSemanticKind = (input: {
     return "Scenario";
   }
 
-  if (/\b(account|measure|metric|kpi|amount|revenue|margin)\b/.test(candidateValue)) {
+  if (
+    /\b(account|measure|metric|kpi|amount|revenue|margin)\b/.test(
+      candidateValue,
+    )
+  ) {
     return "Measure";
   }
 
@@ -308,7 +312,11 @@ const inferSemanticKind = (input: {
     return "Product";
   }
 
-  if (/\b(entity|company|cost center|business unit|organisation|organization)\b/.test(candidateValue)) {
+  if (
+    /\b(entity|company|cost center|business unit|organisation|organization)\b/.test(
+      candidateValue,
+    )
+  ) {
     return "Entity";
   }
 
