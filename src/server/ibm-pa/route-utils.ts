@@ -25,7 +25,7 @@ const dimensionDetailQuerySchema = z.object({
 const logsQuerySchema = z.object({
   level: z.string().trim().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100),
-  minutes: z.coerce.number().int().min(1).max(180).default(10),
+  minutes: z.coerce.number().int().min(1).max(1440).default(60),
   server: z.string().trim().min(1).optional(),
 });
 

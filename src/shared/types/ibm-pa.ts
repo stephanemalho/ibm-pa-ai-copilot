@@ -123,6 +123,8 @@ type Tm1MessageLogEntry = {
   timestamp: string;
 };
 
+type Tm1LogSource = "message_log_entries" | "message_log_function";
+
 type Tm1RecentMessageLogsResponse = {
   cutoffTimestamp: string;
   entries: Tm1MessageLogEntry[];
@@ -134,6 +136,8 @@ type Tm1RecentMessageLogsResponse = {
   returnedEntryCount: number;
   scannedEntryCount: number;
   serverName: string;
+  source: Tm1LogSource;
+  sourcesTried: Tm1LogSource[];
 };
 
 type MappingNodeKind = "cube" | "dimension" | "process" | "server";
@@ -332,6 +336,7 @@ export type {
   Tm1AttributeMap,
   Tm1HierarchyMetadata,
   Tm1LocalizedAttributeMap,
+  Tm1LogSource,
   Tm1MappingEdge,
   Tm1MappingNode,
   Tm1MessageLogEntry,

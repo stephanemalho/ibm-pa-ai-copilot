@@ -16,31 +16,36 @@ type RecentLogsPanelProps = {
 const RecentLogsPanel = ({ data }: RecentLogsPanelProps): ReactNode => {
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <SummaryCard label="Server" value={data.serverName} />
+        <SummaryCard label="Source" value={formatLogSource(data.source)} />
         <SummaryCard
           label="Entries returned"
           value={data.returnedEntryCount.toString()}
         />
-        <SummaryCard label="Window" value={`${data.minutes} min`} />
         <SummaryCard
-          label="Levels seen"
-          value={data.levels.length > 0 ? data.levels.join(", ") : "None"}
+          label="Entries scanned"
+          value={data.scannedEntryCount.toString()}
         />
+        <SummaryCard label="Window" value={`${data.minutes} min`} />
+        <SummaryCard label="Levels seen" value={formatLevels(data.levels)} />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Recent TM1 message logs</CardTitle>
           <CardDescription>
-            Cutoff: {formatTimestamp(data.cutoffTimestamp)}. Showing the most
-            recent entries first.
+            Cutoff: {formatTimestamp(data.cutoffTimestamp)}. Source used:{" "}
+            {formatLogSource(data.source)}. Sources tried:{" "}
+            {formatTriedSources(data.sourcesTried)}.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {data.entries.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
-              No log entries matched the current filters.
+              No log entries matched the current filters on {data.serverName}.
+              Try a wider time window such as 60 minutes or 24 hours, or switch
+              to another reachable TM1 server.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -96,6 +101,26 @@ const RecentLogsPanel = ({ data }: RecentLogsPanelProps): ReactNode => {
       </Card>
     </div>
   );
+};
+
+const formatLevels = (levels: string[]): string => {
+  return levels.length > 0 ? levels.join(", ") : "None";
+};
+
+const formatLogSource = (
+  source: Tm1RecentMessageLogsResponse["source"],
+): string => {
+  if (source === "message_log_function") {
+    return "MessageLog()";
+  }
+
+  return "MessageLogEntries";
+};
+
+const formatTriedSources = (
+  sources: Tm1RecentMessageLogsResponse["sourcesTried"],
+): string => {
+  return sources.map((source) => formatLogSource(source)).join(", ");
 };
 
 const SummaryCard = ({

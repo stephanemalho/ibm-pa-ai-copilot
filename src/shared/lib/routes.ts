@@ -50,19 +50,11 @@ const getBusinessFlowRoute = (
 };
 
 const getServerLogsRoute = (serverName: string): string => {
-  const search = new URLSearchParams({
-    server: serverName,
-  });
-
-  return `${appRoutes.logs}?${search.toString()}`;
+  return `${getServerRoute(serverName)}/logs`;
 };
 
 const getServerMappingRoute = (serverName: string): string => {
-  const search = new URLSearchParams({
-    server: serverName,
-  });
-
-  return `${appRoutes.mapping}?${search.toString()}`;
+  return `${getServerRoute(serverName)}/mapping`;
 };
 
 export {

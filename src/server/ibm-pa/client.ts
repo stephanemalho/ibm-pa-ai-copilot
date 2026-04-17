@@ -589,23 +589,17 @@ class IbmPaClient {
         returnedEntryCount: Math.min(filteredEntries.length, limit),
         scannedEntryCount: mockRecentMessageLogs.scannedEntryCount,
         serverName,
+        source: mockRecentMessageLogs.source,
+        sourcesTried: mockRecentMessageLogs.sourcesTried,
       };
     }
 
     const scanLimit = Math.min(Math.max(limit * 3, 100), 500);
-    const payload = await requestIbmPaJson({
-      path: `/MessageLogEntries?$select=ID,ThreadID,SessionID,Level,TimeStamp,Logger,Message&$orderby=TimeStamp desc&$top=${scanLimit}`,
-      scope: {
-        kind: "tm1",
-        serverName,
-      },
+    const liveEntriesResult = await this.getLiveMessageLogEntries({
+      scanLimit,
+      serverName,
     });
-    const items = extractCollectionItems(payload, "message log entries");
-    const normalizedEntries = items
-      .map((item) => normalizeMessageLogEntry(item, serverName))
-      .filter((entry): entry is Tm1MessageLogEntry => {
-        return entry !== null;
-      });
+    const normalizedEntries = liveEntriesResult.entries;
     const filteredEntries = normalizedEntries.filter((entry) => {
       const timestamp = Date.parse(entry.timestamp);
 
@@ -635,7 +629,153 @@ class IbmPaClient {
       returnedEntryCount: Math.min(filteredEntries.length, limit),
       scannedEntryCount: normalizedEntries.length,
       serverName,
+      source: liveEntriesResult.source,
+      sourcesTried: liveEntriesResult.sourcesTried,
     };
+  }
+
+  private async getLiveMessageLogEntries(params: {
+    scanLimit: number;
+    serverName: string;
+  }): Promise<{
+    entries: Tm1MessageLogEntry[];
+    source: Tm1RecentMessageLogsResult["source"];
+    sourcesTried: Tm1RecentMessageLogsResult["sourcesTried"];
+  }> {
+    const sourcesTried: Tm1RecentMessageLogsResult["sourcesTried"] = [];
+    let fallbackResult:
+      | {
+          entries: Tm1MessageLogEntry[];
+          source: Tm1RecentMessageLogsResult["source"];
+        }
+      | null = null;
+    let lastError: unknown;
+
+    const loaders: Array<{
+      load: () => Promise<Tm1MessageLogEntry[]>;
+      source: Tm1RecentMessageLogsResult["source"];
+    }> = [
+      {
+        load: () => {
+          return this.fetchMessageLogEntriesFromPath({
+            entityName: "message log entries",
+            path: `/MessageLogEntries?$select=ID,ThreadID,SessionID,Level,TimeStamp,Logger,Message&$orderby=TimeStamp desc&$top=${params.scanLimit}`,
+            serverName: params.serverName,
+          });
+        },
+        source: "message_log_entries",
+      },
+      {
+        load: () => {
+          return this.fetchMessageLogEntriesFromFunction({
+            scanLimit: params.scanLimit,
+            serverName: params.serverName,
+          });
+        },
+        source: "message_log_function",
+      },
+    ];
+
+    for (const loader of loaders) {
+      sourcesTried.push(loader.source);
+
+      try {
+        const entries = await loader.load();
+
+        if (!fallbackResult) {
+          fallbackResult = {
+            entries,
+            source: loader.source,
+          };
+        }
+
+        if (entries.length > 0) {
+          return {
+            entries,
+            source: loader.source,
+            sourcesTried,
+          };
+        }
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (fallbackResult) {
+      return {
+        entries: fallbackResult.entries,
+        source: fallbackResult.source,
+        sourcesTried,
+      };
+    }
+
+    if (lastError) {
+      throw lastError;
+    }
+
+    return {
+      entries: [],
+      source: "message_log_entries",
+      sourcesTried,
+    };
+  }
+
+  private async fetchMessageLogEntriesFromFunction(params: {
+    scanLimit: number;
+    serverName: string;
+  }): Promise<Tm1MessageLogEntry[]> {
+    const candidatePaths = [
+      `/MessageLog()?$select=ID,ThreadID,SessionID,Level,TimeStamp,Logger,Message&$top=${params.scanLimit}`,
+      `/MessageLog?$select=ID,ThreadID,SessionID,Level,TimeStamp,Logger,Message&$top=${params.scanLimit}`,
+    ];
+    let lastError: unknown;
+
+    for (const candidatePath of candidatePaths) {
+      try {
+        return await this.fetchMessageLogEntriesFromPath({
+          entityName: "message log function entries",
+          path: candidatePath,
+          serverName: params.serverName,
+        });
+      } catch (error) {
+        lastError = error;
+
+        if (!isIbmPaError(error)) {
+          throw error;
+        }
+
+        if (
+          error.statusCode !== 400 &&
+          error.statusCode !== 404 &&
+          error.statusCode !== 405
+        ) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError ?? new Error("IBM Planning Analytics message log is unavailable.");
+  }
+
+  private async fetchMessageLogEntriesFromPath(params: {
+    entityName: string;
+    path: string;
+    serverName: string;
+  }): Promise<Tm1MessageLogEntry[]> {
+    const payload = await requestIbmPaJson({
+      path: params.path,
+      scope: {
+        kind: "tm1",
+        serverName: params.serverName,
+      },
+    });
+    const items = extractCollectionItems(payload, params.entityName);
+
+    return items
+      .map((item) => normalizeMessageLogEntry(item, params.serverName))
+      .filter((entry): entry is Tm1MessageLogEntry => {
+        return entry !== null;
+      });
   }
 
   public async getMetadataMapping(

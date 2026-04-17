@@ -454,6 +454,8 @@ const mockRecentMessageLogs: Tm1RecentMessageLogsResult = {
   returnedEntryCount: 2,
   scannedEntryCount: mockMessageLogEntries.length,
   serverName: MOCK_SERVER_ID,
+  source: "message_log_entries",
+  sourcesTried: ["message_log_entries"],
 };
 
 export {
